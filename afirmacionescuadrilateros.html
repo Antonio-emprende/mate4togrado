@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Matemáticas 4.º – Afirmaciones sobre cuadriláteros (modo examen)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --azul:#2563eb; --verde:#10b981; --rojo:#ef4444; --borde:#e2e8f0; --texto:#0f172a;
+    --gris:#f8fafc; --radius:18px; --shadow:0 10px 28px rgba(2,6,23,.08);
+  }
+  body{background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto)}
+  .game-card{border:none;border-radius:1rem;box-shadow:var(--shadow)}
+  .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .score-chip{font-weight:800;border-radius:999px;padding:.45rem .95rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+  .btn-fab{border-radius:999px;padding:.65rem 1rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+
+  /* Tarjetas arrastrables */
+  .piece{display:inline-flex;align-items:center;justify-content:center;padding:.55rem .8rem;
+         background:#fff;border:2px solid var(--borde);border-radius:14px;min-width:220px;
+         cursor:grab;user-select:none;touch-action:none;box-shadow:0 8px 22px rgba(2,6,23,.06)}
+  .piece:active{cursor:grabbing;transform:scale(1.03)}
+  .piece .name{font-weight:800}
+  .dragging{position:fixed;z-index:1000;pointer-events:none;filter:drop-shadow(0 10px 16px rgba(0,0,0,.25))}
+  .piece.right{box-shadow:0 0 0 2px #86efac inset}
+  .piece.wrong{box-shadow:0 0 0 2px #fecaca inset}
+
+  .bank{min-height:140px;background:#fff;border:2px solid var(--borde);border-radius:var(--radius);
+        padding:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+
+  .section{border:1px solid var(--borde);border-radius:16px;padding:14px;background:#fff}
+  .section h3{font-size:1.05rem;margin-bottom:.35rem}
+
+  /* Tablero de clasificación */
+  .board{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .box{background:#f8fafc;border:2px dashed #cbd5e1;border-radius:16px;padding:10px}
+  .box h4{font-size:.95rem;margin:0 0 6px 0}
+  .slot{display:flex;flex-wrap:wrap;gap:10px;min-height:64px}
+  .hot{outline:3px solid rgba(124,58,237,.45);outline-offset:6px}
+
+  @media (max-width:992px){ .board{grid-template-columns:1fr} }
+
+  /* Botón pequeño, rojo y parpadeante para volver al menú */
+  .btn-menu{
+    display:block; width:max-content; margin:10px auto 0 auto;
+    padding:.55rem 1.1rem; font-weight:800; border:none; border-radius:999px;
+    background:#ef4444; color:#fff; box-shadow:0 6px 18px rgba(239,68,68,.32);
+    animation:blink 1.15s infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+</style>
+</head>
+<body>
+<div class="container py-4 py-md-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+      <div class="card game-card">
+        <div class="card-body p-3 p-md-4 p-lg-5">
+
+          <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div>
+              <h1 class="h3 m-0 title-badge">Matemáticas 4.º – Afirmaciones sobre cuadriláteros</h1>
+              <p class="text-secondary m-0">Clasifica cada afirmación en <strong>Siempre (para todos los cuadriláteros)</strong> o <strong>No siempre</strong>.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+              <button id="howBtn" class="btn btn-outline-secondary btn-fab" type="button">❓ ¿Cómo jugar?</button>
+              <button id="checkBtn" class="btn btn-success btn-fab" type="button">✔️ Revisar</button>
+              <button id="resetBtn" class="btn btn-primary btn-fab" type="button">🔄 Nueva ronda</button>
+            </div>
+          </header>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="section">
+                <h3>Afirmaciones</h3>
+                <p class="small text-muted mb-2">Arrastra cada tarjeta a la caja correcta.</p>
+                <div id="bank" class="bank" aria-label="Banco de afirmaciones"></div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="section">
+                <h3>Clasificar</h3>
+                <div id="board" class="board">
+                  <div id="box-true" class="box">
+                    <h4>Siempre (para todos los cuadriláteros)</h4>
+                    <div class="slot"></div>
+                  </div>
+                  <div id="box-false" class="box">
+                    <h4>No siempre</h4>
+                    <div class="slot"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 small text-muted">
+            Consejo: si una tarjeta vuelve al banco es que no pertenece a esa caja. ¡Sigue intentando! 😊
+          </div>
+
+          <!-- Botón de menú principal (abajo, centrado) -->
+          <button class="btn-menu" onclick="location.href='index.html'">← Menú principal</button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ¿Cómo jugar? -->
+<div class="modal fade" id="howModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content p-3">
+    <div class="modal-header border-0"><h5 class="modal-title">¿Cómo se juega?</h5>
+      <button class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body">
+      <ol class="mb-0 ps-3">
+        <li>Arrastra cada afirmación a <strong>Siempre</strong> o <strong>No siempre</strong>.</li>
+        <li>El puntaje sube cuando aciertas. Con 100 aparece confeti 🎉.</li>
+        <li>Usa <strong>✔️ Revisar</strong> para ver ✓/✗ y <strong>Nueva ronda</strong> para mezclar y reiniciar.</li>
+      </ol>
+    </div>
+  </div></div>
+</div>
+
+<!-- Modal resultado -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content text-center p-2 p-md-3">
+    <div class="modal-header border-0 justify-content-center"><div style="font-size:48px">🎉✨</div></div>
+    <div class="modal-body"><h3 id="resultTitle" class="mb-2">¡Excelente!</h3><p id="resultText" class="lead mb-0"></p></div>
+    <div class="modal-footer border-0 justify-content-center"><button class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button></div>
+  </div></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+  let score=0, celebrated=false, swapped=false;
+
+  function setScore(v){ score=Math.round(v); $('#score').textContent=`Puntaje: ${score} / 100`; }
+  function shuffle(a){ return a.map(x=>[Math.random(),x]).sort((x,y)=>x[0]-y[0]).map(p=>p[1]); }
+
+  /* ===== Afirmaciones ===== */
+  const FACTS = [
+    {id:'f-vertices', text:'Cuatro vértices', correct:true},
+    {id:'f-lados',    text:'Cuatro lados', correct:true},
+    {id:'f-angulos',  text:'Cuatro ángulos interiores', correct:true},
+    {id:'f-diagon',   text:'Dos diagonales', correct:true},
+    {id:'f-suma',     text:'Suma de ángulos interiores = 360°', correct:true},
+    {id:'f-iguales',  text:'Todos los lados son iguales', correct:false},
+    {id:'f-rectos',   text:'Todos los ángulos son rectos', correct:false},
+  ];
+
+  function renderBank(){
+    const bank = $('#bank'); bank.innerHTML='';
+    shuffle(FACTS).forEach(info=>{
+      const tag=document.createElement('div');
+      tag.className='piece';
+      tag.dataset.correctAnswer = info.correct ? 'true' : 'false';
+      tag.innerHTML=`<div class="name">${info.text}</div>`;
+      makeDraggable(tag);
+      bank.appendChild(tag);
+    });
+  }
+
+  /* ===== Interacción ===== */
+  function makeDraggable(src){
+    src.addEventListener('pointerdown',(e)=>{
+      e.preventDefault();
+      const ghost=src.cloneNode(true); ghost.classList.add('dragging'); document.body.appendChild(ghost);
+      const r=ghost.getBoundingClientRect(); const offX=r.width/2, offY=r.height/2;
+      const moveAt=(x,y)=>{ ghost.style.left=(x-offX)+'px'; ghost.style.top=(y-offY)+'px'; };
+      moveAt(e.clientX,e.clientY);
+
+      function onMove(ev){ moveAt(ev.clientX,ev.clientY); highlight(ev.clientX,ev.clientY); }
+      function onUp(ev){
+        document.removeEventListener('pointermove',onMove);
+        document.removeEventListener('pointerup',onUp);
+        drop(ev.clientX,ev.clientY,src);
+        ghost.remove(); clearHighlights();
+      }
+      document.addEventListener('pointermove',onMove,{passive:true});
+      document.addEventListener('pointerup',onUp,{once:true});
+    });
+  }
+
+  function elementAt(x,y){ return document.elementFromPoint(x,y); }
+  function highlight(x,y){
+    clearHighlights();
+    const el=elementAt(x,y);
+    const box = (el && (el.id==='box-true'||el.id==='box-false')) ? el : (el && el.closest ? el.closest('.box') : null);
+    if(box) box.classList.add('hot');
+  }
+  function clearHighlights(){ $$('.box').forEach(b=>b.classList.remove('hot')); }
+
+  function drop(x,y,src){
+    let box = elementAt(x,y);
+    box = (box && (box.id==='box-true'||box.id==='box-false')) ? box : (box && box.closest ? box.closest('.box') : null);
+    if(box){
+      box.querySelector('.slot').appendChild(src);
+      const should = src.dataset.correctAnswer==='true' ? 'box-true' : 'box-false';
+      src.dataset.correct = (box.id===should) ? '1' : '0';
+    }else{
+      $('#bank').appendChild(src);
+      src.dataset.correct='';
+    }
+    computeScore();
+  }
+
+  /* ===== Puntaje / revisar ===== */
+  function computeScore(){
+    const total = FACTS.length;
+    let ok=0; $$('.piece').forEach(p=>{ if(p.dataset.correct==='1') ok++; });
+    const val=(ok/total)*100; setScore(val);
+    if(val===100 && !celebrated){ confetti(); celebrated=true; }
+  }
+
+  function checkAll(){
+    $$('.piece').forEach(p=>{
+      p.classList.remove('right','wrong');
+      if(p.dataset.correct==='1') p.classList.add('right');
+      else if(p.dataset.correct==='0') p.classList.add('wrong');
+    });
+    const total = FACTS.length;
+    let ok=0; $$('.piece').forEach(p=>{ if(p.dataset.correct==='1') ok++; });
+    const val=(ok/total)*100; setScore(val);
+    const t=$('#resultTitle'), txt=$('#resultText');
+    if(val===100){ t.textContent='¡Has ganado!'; txt.textContent='¡Sacaste un 100! 😊'; }
+    else if(val>=70){ t.textContent='¡Muy bien!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Revisa en rojo y vuelve a intentar.`; }
+    else { t.textContent='¡Tú puedes!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Practica un poquito más.`; }
+    if(window.bootstrap){ new bootstrap.Modal('#resultModal').show(); } else { alert(`${t.textContent}\n${txt.textContent}`); }
+  }
+
+  function confetti(){
+    const burst=document.createElement('div'); burst.style.position='fixed'; burst.style.inset='0';
+    burst.style.pointerEvents='none'; document.body.appendChild(burst);
+    const emojis=['✨','🎉','⭐','🎯','💫','🏆'];
+    for(let i=0;i<60;i++){
+      const s=document.createElement('div'); s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.position='absolute'; s.style.left=Math.random()*100+'%'; s.style.top='-10%';
+      s.style.fontSize=(16+Math.random()*22)+'px'; s.style.transition='transform 1.3s ease, opacity 1.3s ease';
+      burst.appendChild(s);
+      requestAnimationFrame(()=>{ s.style.transform='translateY('+(120+Math.random()*120)+'vh) rotate('+(Math.random()*360)+'deg)'; s.style.opacity='0'; });
+    }
+    setTimeout(()=>burst.remove(),1400);
+  }
+
+  /* ===== Reset / init ===== */
+  function layoutSwap(){
+    // Alterna el orden de las columnas para que visualmente cambie cada ronda
+    const board = $('#board');
+    const a = $('#box-true'), b = $('#box-false');
+    if(swapped){ board.appendChild(a); board.appendChild(b); } else { board.appendChild(b); board.appendChild(a); }
+  }
+
+  function resetGame(){
+    celebrated=false; setScore(0);
+    // Devolver tarjetas al banco y limpiar estilos/estado
+    $$('.piece').forEach(p=>{ p.dataset.correct=''; p.classList.remove('right','wrong'); $('#bank').appendChild(p); });
+    renderBank();                         // remezcla
+    swapped = !swapped; layoutSwap();     // alterna columnas
+    // limpiar cajas
+    $$('.slot').forEach(s=>s.innerHTML='');
+  }
+
+  function init(){
+    renderBank();
+    setScore(0);
+    swapped = Math.random()<0.5; layoutSwap();
+    $('#checkBtn').addEventListener('click',checkAll);
+    $('#resetBtn').addEventListener('click',resetGame);
+    $('#howBtn').addEventListener('click',()=>{ if(window.bootstrap){ new bootstrap.Modal('#howModal').show(); } else { alert('Arrastra cada tarjeta a la caja correcta. “Nueva ronda” remezcla y alterna columnas.'); } });
+  }
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',init); } else { init(); }
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

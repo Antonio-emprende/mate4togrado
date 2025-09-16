@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Decimales 4.º — Une con flechas la lectura con el número</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --azul:#2563eb;--verde:#10b981;--rojo:#ef4444;--borde:#e2e8f0;--texto:#0f172a;
+    --gris:#f8fafc;--shadow:0 10px 28px rgba(2,6,23,.08)
+  }
+  body{background:linear-gradient(180deg,#f8fbff 0%,#fff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto)}
+  .game-card{border:none;border-radius:1rem;box-shadow:var(--shadow)}
+  .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .score-chip{font-weight:800;border-radius:999px;padding:.45rem .95rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+  .btn-fab{border-radius:999px;padding:.65rem 1rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+
+  .section{border:1px solid var(--borde);border-radius:16px;padding:14px;background:#fff}
+  .section h3{font-size:1.05rem;margin-bottom:.35rem}
+
+  /* Tablero */
+  .match-wrap{position:relative;padding:6px 10px}
+  /* ≈ 1" de separación entre columnas (~96px). Usamos 110px para más claridad */
+  .cols{
+    display:grid;
+    grid-template-columns:minmax(560px,1fr) 300px; /* lectura | números */
+    gap:110px;
+    align-items:start;
+  }
+  .list{display:flex;flex-direction:column;gap:14px}
+  .item{
+    background:#fff;border:2px solid var(--borde);border-radius:14px;padding:.6rem 1rem;
+    box-shadow:0 6px 16px rgba(2,6,23,.06);user-select:none
+  }
+  .item.left{cursor:grab}
+  .item.dragging{opacity:.95;filter:drop-shadow(0 10px 16px rgba(0,0,0,.25))}
+  .item.good{box-shadow:0 0 0 2px #86efac inset}
+  .item.bad{box-shadow:0 0 0 2px #fecaca inset}
+
+  /* Números a la derecha con alineación derecha y dígitos tabulares */
+  .item.right{
+    text-align:right;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    letter-spacing:.2px;
+    padding-right:1.1rem;
+  }
+
+  .hint{color:#64748b}
+
+  /* SVG flechas */
+  .wires{position:absolute;inset:0;pointer-events:none}
+  .wire{stroke:#6b7280;stroke-width:2.5;fill:none}
+  .wire.temp{stroke:#a855f7;stroke-dasharray:6 6}
+  .end-dot{fill:#0ea5e9}
+  .start-dot{fill:#a855f7}
+
+  @media (max-width: 992px){
+    .cols{grid-template-columns:1fr;gap:24px}
+    .match-wrap{min-height:560px}
+  }
+
+  /* ===== Botón centrado inferior (Menú principal) ===== */
+  .bottom-return-wrap{
+    display:flex; justify-content:center; align-items:center;
+    margin: 18px auto 46px;   /* un renglón debajo del cajetín */
+  }
+  .btn-main-return{
+    background:#ef4444; color:#fff; border:none; border-radius:999px;
+    padding:.8rem 1.2rem; font-weight:900; box-shadow:0 10px 24px rgba(239,68,68,.35);
+    animation:blinkReturn 1.15s ease-in-out infinite;
+  }
+  @keyframes blinkReturn{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.06); }
+  }
+</style>
+</head>
+<body>
+<div class="container py-4 py-md-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+      <div class="card game-card">
+        <div class="card-body p-3 p-md-4 p-lg-5">
+
+          <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div>
+              <h1 class="h3 m-0 title-badge">Decimales 4.º — Une con flechas</h1>
+              <p class="text-secondary m-0">Arrastra desde la <strong>lectura</strong> (izquierda) hasta el <strong>número</strong> (derecha). Repite hasta unir todas.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+              <button id="howBtn" class="btn btn-outline-secondary btn-fab" type="button">❓ ¿Cómo jugar?</button>
+              <button id="checkBtn" class="btn btn-success btn-fab" type="button">✔️ Revisar</button>
+              <button id="resetBtn" class="btn btn-primary btn-fab" type="button">🔄 Nueva ronda</button>
+            </div>
+          </header>
+
+          <div class="section">
+            <h3>Lectura ↔ Número</h3>
+            <div class="match-wrap" id="board">
+              <svg class="wires" id="wires" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+              <div class="cols">
+                <div class="list" id="leftList" aria-label="Lecturas"></div>
+                <div class="list" id="rightList" aria-label="Números"></div>
+              </div>
+            </div>
+            <p class="hint mt-2">Consejo: puedes volver a unir una lectura a otro número; la conexión anterior se reemplaza automáticamente.</p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Botón centrado inferior -->
+<div class="bottom-return-wrap">
+  <button id="mainMenuBtn" class="btn-main-return">← Menú principal</button>
+</div>
+
+<!-- Modales -->
+<div class="modal fade" id="howModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content p-3">
+    <div class="modal-header border-0"><h5 class="modal-title">¿Cómo se juega?</h5>
+      <button class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body">
+      <ol class="mb-0 ps-3">
+        <li>Haz <strong>clic y arrastra</strong> desde una <em>lectura</em> (izquierda) hasta el <em>número</em> correspondiente (derecha).</li>
+        <li>Las flechas se pueden <strong>reemplazar</strong>: si conectas de nuevo, la unión anterior se borra.</li>
+        <li>Pulsa <strong>✔️ Revisar</strong> para ver ✓/✗ y tu nota. <strong>🔄 Nueva ronda</strong> genera otros números.</li>
+      </ol>
+    </div>
+  </div></div>
+</div>
+
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content text-center p-2 p-md-3">
+    <div class="modal-header border-0 justify-content-center"><div style="font-size:48px">🎉✨</div></div>
+    <div class="modal-body"><h3 id="resultTitle" class="mb-2">¡Excelente!</h3><p id="resultText" class="lead mb-0"></p></div>
+    <div class="modal-footer border-0 justify-content-center"><button class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button></div>
+  </div></div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const rnd = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+
+  /* ======= Texto en español ======= */
+  const UNITS_MASC = ['cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve'];
+  const UNITS_FEM  = ['cero','una','dos','tres','cuatro','cinco','seis','siete','ocho','nueve'];
+  const TENS = ['','diez','veinte','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+  const TEENS = ['diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve'];
+  function twoDigitsToWords(n, fem=false){
+    if(n<10) return (fem?UNITS_FEM:UNITS_MASC)[n];
+    if(n<20) return TEENS[n-10];
+    const d=Math.floor(n/10), u=n%10;
+    if(n===20) return 'veinte';
+    if(d===2){ // 21..29
+      const base = u===2?'veintidós':u===3?'veintitrés':u===6?'veintiséis':'veinti'+(fem&&u===1?'una':UNITS_MASC[u]);
+      return u===0?'veinte':base;
+    }
+    const uword = u===0? '' : (fem&&u===1?'una':UNITS_MASC[u]);
+    return u===0 ? TENS[d] : `${TENS[d]} y ${uword}`;
+  }
+  function hundredsFem(n){
+    if(n===0) return 'cero';
+    if(n===100) return 'cien';
+    const h=Math.floor(n/100), r=n%100;
+    const H=['','ciento','doscientas','trescientas','cuatrocientas','quinientas','seiscientas','setecientas','ochocientas','novecientas'][h];
+    const tail = r ? (' ' + twoDigitsToWords(r,true)) : '';
+    return `${h?H:''}${tail}`.trim();
+  }
+  function unitsToWords(n){ return twoDigitsToWords(n,false) + ' ' + (n===1?'unidad':'unidades'); }
+  function milesimasToWords(n){
+    const txt = n<100 ? twoDigitsToWords(n,true) : hundredsFem(n);
+    return `${txt} milésima${n===1?'':'s'}`;
+  }
+
+  /* ======= Generación de ejercicios ======= */
+  let data={}, links={}, celebrated=false; // links: leftId -> rightId
+  function buildRound(){
+    const items=[];
+    for(let i=0;i<6;i++){
+      let entero=rnd(10,99);
+      let mili; do{ mili=rnd(1,999);}while(mili===0);
+      const num = `${entero},${String(mili).padStart(3,'0')}`;
+      const lectura = `${unitsToWords(entero)} con ${milesimasToWords(mili)}`;
+      items.push({id:`q${i}`, lectura, numero:num});
+    }
+    const L=[...items].sort(()=>Math.random()-0.5);
+    const R=[...items].sort(()=>Math.random()-0.5);
+    data={L,R};
+  }
+
+  /* ======= Render ======= */
+  function render(){
+    const left=$('#leftList'), right=$('#rightList'); left.innerHTML=''; right.innerHTML='';
+    data.L.forEach(it=>{
+      const el=document.createElement('div');
+      el.className='item left'; el.textContent=it.lectura; el.dataset.id=it.id; el.dataset.answer=it.numero;
+      left.appendChild(el); makeDraggable(el);
+    });
+    data.R.forEach(it=>{
+      const el=document.createElement('div');
+      el.className='item right'; el.textContent=it.numero; el.dataset.id=it.id;
+      right.appendChild(el);
+    });
+    links={}; celebrated=false; drawAllWires(); setScore(0);
+  }
+
+  /* ======= Flechas (SVG) ======= */
+  function boardRect(){ return $('#board').getBoundingClientRect(); }
+  function centerRight(el){ const r=el.getBoundingClientRect(), b=boardRect(); return {x:r.right-b.left, y:r.top+r.height/2-b.top}; }
+  function centerLeft(el){  const r=el.getBoundingClientRect(), b=boardRect(); return {x:r.left-b.left,  y:r.top+r.height/2-b.top}; }
+  function wirePath(x1,y1,x2,y2){
+    const dx=Math.max(80,(x2-x1)/2);
+    const c1x=x1+dx, c2x=x2-dx;
+    return `M ${x1} ${y1} C ${c1x} ${y1}, ${c2x} ${y2}, ${x2} ${y2}`;
+  }
+  function drawAllWires(){
+    const svg=$('#wires'); svg.innerHTML='';
+    const b=boardRect(); svg.setAttribute('viewBox',`0 0 ${b.width} ${b.height}`);
+    Object.entries(links).forEach(([lid,rid])=>{
+      const L = $(`.left.item[data-id="${lid}"]`);
+      const R = $(`.right.item[data-id="${rid}"]`);
+      if(!L||!R) return;
+      const p1=centerRight(L), p2=centerLeft(R);
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d',wirePath(p1.x,p1.y,p2.x,p2.y));
+      path.setAttribute('class','wire');
+      svg.appendChild(path);
+      const sDot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      sDot.setAttribute('cx',p1.x); sDot.setAttribute('cy',p1.y); sDot.setAttribute('r','4'); sDot.setAttribute('class','start-dot');
+      const eDot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      eDot.setAttribute('cx',p2.x); eDot.setAttribute('cy',p2.y); eDot.setAttribute('r','4'); eDot.setAttribute('class','end-dot');
+      svg.appendChild(sDot); svg.appendChild(eDot);
+    });
+  }
+
+  /* ======= Drag desde izquierda ======= */
+  let dragging=null, tempPath=null;
+  function makeDraggable(el){
+    el.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      dragging=el; el.classList.add('dragging');
+      startTemp(e.clientX,e.clientY);
+      const mm=ev=>updateTemp(ev.clientX,ev.clientY);
+      const up=ev=>{
+        document.removeEventListener('pointermove',mm);
+        document.removeEventListener('pointerup',up);
+        stopTemp(ev.clientX,ev.clientY);
+        el.classList.remove('dragging'); dragging=null;
+      };
+      document.addEventListener('pointermove',mm,{passive:true});
+      document.addEventListener('pointerup',up,{once:true});
+    });
+  }
+  function startTemp(x,y){
+    const svg=$('#wires'); const b=boardRect(); svg.setAttribute('viewBox',`0 0 ${b.width} ${b.height}`);
+    const p1=centerRight(dragging);
+    tempPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+    tempPath.setAttribute('class','wire temp');
+    tempPath.dataset.x1=p1.x; tempPath.dataset.y1=p1.y;
+    svg.appendChild(tempPath);
+    updateTemp(x,y);
+  }
+  function updateTemp(x,y){
+    if(!tempPath) return;
+    const b=boardRect(); const x1=parseFloat(tempPath.dataset.x1), y1=parseFloat(tempPath.dataset.y1);
+    const x2=x-b.left, y2=y-b.top; tempPath.setAttribute('d',wirePath(x1,y1,x2,y2));
+  }
+  function elementAt(x,y){ return document.elementFromPoint(x,y); }
+  function stopTemp(x,y){
+    if(!tempPath) return;
+    const el=elementAt(x,y); tempPath.remove(); tempPath=null;
+    const target = el?.closest?.('.item.right'); if(target){ connect(dragging.dataset.id, target.dataset.id); }
+  }
+
+  function connect(leftId, rightId){
+    // si ese número ya estaba conectado por otra lectura, libéralo
+    Object.entries(links).forEach(([lid,rid])=>{ if(rid===rightId) delete links[lid]; });
+    links[leftId]=rightId; drawAllWires();
+    // auto-calcular puntaje y confeti si queda perfecto
+    const val = computeScore();
+    if(val===100 && !celebrated){ confetti(); celebrated=true; }
+  }
+
+  /* ======= Puntaje / revisión ======= */
+  function computeScore(){
+    const total = data.L.length; let ok=0;
+    $$('.item').forEach(i=>i.classList.remove('good','bad'));
+    data.L.forEach(L=>{
+      const rid = links[L.id];
+      if(!rid) return;
+      const R = data.R.find(x=>x.id===rid);
+      const leftEl = $(`.left.item[data-id="${L.id}"]`);
+      const rightEl= R? $(`.right.item[data-id="${R.id}"]`) : null;
+      // comparar contra L.numero (del dataset de datos)
+      const isOK = (!!R && R.numero === L.numero);
+      if(isOK){ ok++; leftEl.classList.add('good'); rightEl?.classList.add('good'); }
+    });
+    const val=(ok/total)*100; setScore(val); return val;
+  }
+  function setScore(val){ $('#score').textContent = `Puntaje: ${Math.round(val)} / 100`; }
+
+  function checkAll(){
+    const total = data.L.length; let ok=0;
+    data.L.forEach(L=>{
+      const lid=L.id; const rid=links[lid];
+      const lEl=$(`.left.item[data-id="${lid}"]`);
+      let isOK=false;
+      if(rid){
+        const R=data.R.find(x=>x.id===rid);
+        isOK = !!R && (R.numero === L.numero);
+      }
+      const rEl = rid ? $(`.right.item[data-id="${rid}"]`) : null;
+      lEl.classList.add(isOK?'good':'bad'); if(rEl) rEl.classList.add(isOK?'good':'bad');
+      if(isOK) ok++;
+    });
+    const val=(ok/total)*100; setScore(val);
+    const t=$('#resultTitle'), txt=$('#resultText');
+    if(val===100){ t.textContent='¡Has ganado!'; txt.textContent='¡Sacaste un 100! 😊'; confetti(); }
+    else if(val>=70){ t.textContent='¡Muy bien!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Las uniones en rojo están incorrectas.`; }
+    else { t.textContent='¡Tú puedes!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Revisa y vuelve a intentar.`; }
+    const modalEl = document.getElementById('resultModal');
+    if(window.bootstrap && modalEl){ new bootstrap.Modal(modalEl).show(); } else { alert(`${t.textContent}\n${txt.textContent}`); }
+  }
+
+  function confetti(){
+    const burst=document.createElement('div'); burst.style.position='fixed'; burst.style.inset='0'; burst.style.pointerEvents='none'; burst.style.zIndex='2000'; document.body.appendChild(burst);
+    const emojis=['✨','🎉','⭐','🎯','💫','🏆','🎈','🥳'];
+    for(let i=0;i<70;i++){
+      const s=document.createElement('div'); s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.position='absolute'; s.style.left=Math.random()*100+'%'; s.style.top='-10%';
+      s.style.fontSize=(16+Math.random()*24)+'px'; s.style.transition='transform 1.5s ease, opacity 1.5s ease';
+      burst.appendChild(s);
+      requestAnimationFrame(()=>{ s.style.transform=`translateY(${120+Math.random()*140}vh) rotate(${Math.random()*360}deg)`; s.style.opacity='0'; });
+    }
+    setTimeout(()=>burst.remove(),1600);
+  }
+
+  /* ======= Ronda / init ======= */
+  function newRound(){ buildRound(); render(); }
+
+  function init(){
+    newRound();
+    document.addEventListener('click', (e)=>{
+      if(e.target.closest('#checkBtn')) checkAll();
+      if(e.target.closest('#resetBtn')) newRound();
+      if(e.target.closest('#howBtn') && window.bootstrap){
+        const el=document.getElementById('howModal'); if(el) new bootstrap.Modal(el).show();
+      }
+    });
+    window.addEventListener('resize', drawAllWires, {passive:true});
+    window.addEventListener('scroll', drawAllWires, {passive:true});
+
+    // Botón Menú principal
+    const mainBtn = document.getElementById('mainMenuBtn');
+    if(mainBtn){
+      mainBtn.addEventListener('click', ()=>{
+        if(history.length > 1) history.back();
+        else window.location.href = 'index.html';
+      });
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

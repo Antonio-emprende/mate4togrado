@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Práctica: Tablero Posicional de Decimales (Arrastra y suelta)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root{
+      --azul:#2563eb; --verde:#10b981; --amarillo:#f59e0b; --rojo:#ef4444; --gris:#f1f5f9; --texto:#0f172a; --borde:#e2e8f0;
+      --cell: clamp(52px, 8.2vw, 84px);
+      --gap: clamp(6px, 1.2vw, 12px);
+      --radius: 16px;
+      --commaW: clamp(24px, 3.5vw, 36px);
+    }
+    body{background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto);}    
+    .game-card{border:none;border-radius:1rem;box-shadow:0 10px 28px rgba(2,6,23,.08);}    
+    .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;}
+
+    /* ======= TABLERO ======= */
+    .board{width:100%;overflow:auto;}
+    .grid{display:grid;grid-template-columns:64px repeat(3, minmax(60px,1fr)) var(--commaW) repeat(3, minmax(60px,1fr));gap:var(--gap);align-items:stretch}
+    .head{position:sticky;top:0;z-index:1;background:#fff;border-bottom:2px solid var(--borde)}
+    .cell,.headcell,.row-label{height:var(--cell);display:flex;align-items:center;justify-content:center;border:2px dashed var(--borde);border-radius:12px;background:#fff;font-size:clamp(1rem,2.6vw,1.1rem);font-weight:800;}
+    .comma-head, .comma-cell{border:0;background:transparent;font-weight:900;font-size:clamp(1.2rem,3.5vw,1.6rem);color:#0f172a;}
+    .comma-cell{display:flex; align-items:flex-end; justify-content:center; padding-bottom:8px; line-height:1;}
+    .headcell{border:0;background:#f8fafc;color:#0f172a;font-weight:900}
+    .row-label{background:#eef2ff;border:2px solid #e0e7ff}
+    .cell.drop-ok{border-style:solid;border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.15) inset}
+    .cell.filled{border-color:#86efac;background:#f0fdf4}
+    .cell.wrong{border-color:#fecaca;background:#fff1f2}
+    .cell.autofill{background:#f8fbff;border-color:#dbeafe}
+
+    .cell{position:relative}
+    .mark{position:absolute; right:6px; bottom:6px; width:26px; height:26px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px; line-height:1; box-shadow:0 2px 6px rgba(0,0,0,.08); z-index:2}
+    .mark.ok{background:#dcfce7; color:#15803d; border:2px solid #86efac}
+    .mark.bad{background:#fee2e2; color:#b91c1c; border:2px solid #fecaca; animation:shake .35s ease}
+    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-2px)}50%{transform:translateX(2px)}75%{transform:translateX(-2px)}100%{transform:translateX(0)}}
+
+    /* ======= PALETA ======= */
+    .palette{min-height:84px;background:var(--gris);border-radius:var(--radius);padding:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;border:1px solid var(--borde)}
+    .tile{width:clamp(48px, 8vw, 64px);height:clamp(48px, 8vw, 64px);border-radius:14px;background:#fff;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:clamp(1.1rem,3.8vw,1.4rem);user-select:none;cursor:grab;box-shadow:0 8px 20px rgba(2,6,23,.06)}
+    .tile:active{cursor:grabbing;transform:scale(1.04)}
+    .tile[data-t="eraser"]{border-color:#fecaca;background:#fff1f2}
+
+    .score-chip{font-weight:800;border-radius:999px;padding:.4rem .9rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+    .btn-fab{border-radius:999px;padding:.65rem 1rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+
+    .target-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+    .target-card{border:1px solid var(--borde);border-radius:14px;padding:.6rem .8rem;background:#fff}
+    .badge-num{font-weight:900;font-size:clamp(1rem,3vw,1.2rem);}
+
+    .dragging{position:fixed;z-index:1000;pointer-events:none;filter:drop-shadow(0 10px 16px rgba(0,0,0,.25))}
+
+    .win-emoji{font-size:48px}
+
+    /* ===== Botón Menú principal (rojo parpadeante) bajo la paleta ===== */
+    .back-spot{display:flex;justify-content:center;margin-top:14px;}
+    .btn-back{
+      background:#e53935;color:#fff;border:none;border-radius:999px;
+      padding:.75rem 1.1rem;font-weight:900;letter-spacing:.3px;
+      box-shadow:0 8px 18px rgba(229,57,53,.35);
+      animation:blink 1.15s ease-in-out infinite;
+    }
+    .btn-back:hover{filter:brightness(1.05)}
+    .btn-back:focus{outline:3px solid rgba(255,255,255,.6);outline-offset:2px}
+    @keyframes blink{
+      0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(229,57,53,.55)}
+      50%{transform:scale(1.05);box-shadow:0 0 0 12px rgba(229,57,53,0)}
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4 py-md-5">
+    <div class="row justify-content-center">
+      <div class="col-12 col-xl-10">
+        <div class="card game-card">
+          <div class="card-body p-3 p-md-4 p-lg-5">
+
+            <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+              <div>
+                <h1 class="h3 m-0 title-badge">Tablero Posicional de Decimales</h1>
+                <p class="text-secondary m-0">Arrastra los dígitos a cada casilla: <strong>C</strong> centenas, <strong>D</strong> decenas, <strong>U</strong> unidades, <strong>d</strong> décimas, <strong>c</strong> centésimas y <strong>m</strong> milésimas.</p>
+              </div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+                <button id="howBtn" class="btn btn-outline-secondary btn-fab">❓ ¿Cómo jugar?</button>
+                <button id="checkBtn" class="btn btn-success btn-fab">✔️ Revisar</button>
+                <button id="resetBtn" class="btn btn-primary btn-fab">🔄 Nueva ronda</button>
+                <div class="form-check form-switch ms-2">
+                  <input class="form-check-input" type="checkbox" id="autoZero">
+                  <label class="form-check-label small" for="autoZero">Completar con 0</label>
+                </div>
+              </div>
+            </header>
+
+            <div class="row g-3">
+              <div class="col-12 col-lg-7">
+                <div class="board">
+                  <div id="grid" class="grid">
+                    <!-- Encabezados: #, C, D, U, , d, c, m -->
+                    <div class="head headcell">#</div>
+                    <div class="head headcell">C</div>
+                    <div class="head headcell">D</div>
+                    <div class="head headcell">U</div>
+                    <div class="head headcell comma-head">,</div>
+                    <div class="head headcell">d</div>
+                    <div class="head headcell">c</div>
+                    <div class="head headcell">m</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-lg-5">
+                <h2 class="h6">Números a representar</h2>
+                <div id="targets" class="target-list mb-3"></div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <h2 class="h6 m-0">Paleta de dígitos</h2>
+                  <small class="text-muted">Toca para borrar con 🧽 o vuelve a arrastrar otro dígito</small>
+                </div>
+                <div id="palette" class="palette" aria-label="Dígitos disponibles"></div>
+
+                <!-- ⟵ Botón solicitado bajo la paleta -->
+                <div class="back-spot">
+                  <button id="backBtn" type="button" class="btn-back" title="Volver al menú principal" aria-label="Volver al menú principal">⟵ Menú principal</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 small text-muted">Consejo: si te equivocas, usa la esponja 🧽 para limpiar una casilla.</div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal ¿Cómo jugar? -->
+  <div class="modal fade" id="howModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content p-3">
+        <div class="modal-header border-0">
+          <h5 class="modal-title">¿Cómo se juega?</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <ol class="mb-0 ps-3">
+            <li>Mira los <strong>números</strong> a la derecha (Fila 1, Fila 2, …).</li>
+            <li>Cada fila del tablero corresponde a uno de esos números.</li>
+            <li>Arrastra un dígito (0–9) a su casilla: <strong>C</strong>=centenas, <strong>D</strong>=decenas, <strong>U</strong>=unidades, <strong>d</strong>=décimas, <strong>c</strong>=centésimas, <strong>m</strong>=milésimas.</li>
+            <li>Si el número tiene menos decimales, completa las casillas faltantes con <strong>0</strong>, o activa <em>Completar con 0</em> para que el sistema los ponga al presionar <strong>Revisar</strong>.</li>
+            <li>Usa la <strong>🧽 esponja</strong> para borrar y <strong>✔️ Revisar</strong> para ver tu nota. Con 100 hay confeti 🎉.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal resultado bonito -->
+  <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-center p-2 p-md-3">
+        <div class="modal-header border-0 justify-content-center">
+          <div class="win-emoji">🎉✨</div>
+        </div>
+        <div class="modal-body">
+          <h3 id="resultTitle" class="mb-2">¡Excelente!</h3>
+          <p id="resultText" class="lead mb-0"></p>
+        </div>
+        <div class="modal-footer border-0 justify-content-center">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ======= Utilidades =======
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const rnd = (a,b)=>Math.random()*(b-a)+a;
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  // configuración
+  const ROWS = 6;                 // cantidad de filas por ronda
+  const MAX_INT = 999;            // parte entera hasta centenas
+  const MAX_DEC_DIGITS = 3;       // hasta milésimas
+
+  // estado
+  let data = []; // [{value, digits:{C,D,U,d,c,m}}]
+  let filled = 0; // celdas llenas
+  let score = 0;  // 0..100
+
+  const grid = $('#grid');
+  const palette = $('#palette');
+  const scoreEl = $('#score');
+  const targetsWrap = $('#targets');
+
+  function setScore(v){ score = Math.round(v); scoreEl.textContent = `Puntaje: ${score} / 100`; }
+
+  function numberToDigits(n){
+    const str = n.toFixed(3);                // 3 decimales garantizados
+    const [intPart, decPart] = str.split('.');
+    const I = intPart.padStart(3,'0');       // C D U
+    const d = decPart[0], c = decPart[1], m = decPart[2];
+    return { C: I[0], D: I[1], U: I[2], d, c, m };
+  }
+
+  function niceNumber(){
+    const ent = Math.floor(rnd(0, MAX_INT+1));
+    const decDigits = Math.random()<0.2 ? 0 : Math.floor(rnd(1, MAX_DEC_DIGITS+1));
+    const dec = decDigits===0 ? 0 : Math.floor(rnd(0, Math.pow(10, decDigits)));
+    const value = Number(`${ent}.${dec.toString().padStart(decDigits,'0')}`);
+    return value;
+  }
+
+  function generateData(){
+    data = [];
+    const used = new Set();
+    while(data.length < ROWS){
+      const v = niceNumber();
+      if(used.has(v)) continue; used.add(v);
+      data.push({ value: v, digits: numberToDigits(v) });
+    }
+  }
+
+  function renderTargets(){
+    targetsWrap.innerHTML='';
+    data.forEach((r,idx)=>{
+      const card = document.createElement('div');
+      card.className = 'target-card d-flex align-items-center justify-content-between';
+      const txt = r.value.toLocaleString('es-CR',{ minimumFractionDigits:0, maximumFractionDigits:3 });
+      card.innerHTML = `<span class="text-secondary">Fila ${idx+1}</span><span class="badge bg-primary-subtle text-primary-emphasis badge-num">${txt}</span>`;
+      targetsWrap.appendChild(card);
+    });
+  }
+
+  function renderGrid(){
+    // mantener solo los 8 encabezados (# C D U , d c m)
+    const toRemove = Array.from(grid.children).slice(8);
+    toRemove.forEach(e=>e.remove());
+
+    filled = 0; setScore(0);
+    data.forEach((r,idx)=>{
+      // Columna # (solo etiqueta)
+      const lab = document.createElement('div'); lab.className = 'row-label'; lab.textContent = idx+1; grid.appendChild(lab);
+      // Parte entera: C D U
+      ['C','D','U'].forEach(key=>{
+        const cell = document.createElement('div');
+        cell.className = 'cell'; cell.dataset.row = idx; cell.dataset.key = key; grid.appendChild(cell);
+      });
+      // Columna separadora de coma
+      const comma = document.createElement('div'); comma.className = 'comma-cell'; comma.textContent = ','; grid.appendChild(comma);
+      // Parte decimal: d c m
+      ['d','c','m'].forEach(key=>{
+        const cell = document.createElement('div');
+        cell.className = 'cell'; cell.dataset.row = idx; cell.dataset.key = key; grid.appendChild(cell);
+      });
+    });
+  }
+
+  function renderPalette(){
+    palette.innerHTML = '';
+    for(let i=0;i<=9;i++) palette.appendChild(makeTile(i.toString()));
+    const er = makeTile('🧽'); er.dataset.t = 'eraser'; palette.appendChild(er);
+  }
+
+  function makeTile(txt){
+    const el = document.createElement('div');
+    el.className = 'tile'; el.textContent = txt; el.dataset.digit = txt; makeDraggable(el);
+    return el;
+  }
+
+  // ===== Drag & Drop =====
+  function makeDraggable(src){
+    src.addEventListener('pointerdown', (e)=>{
+      const clon = src.cloneNode(true); clon.classList.add('dragging'); document.body.appendChild(clon);
+      const r = clon.getBoundingClientRect(); let offX = r.width/2, offY = r.height/2;
+      moveAt(e.clientX,e.clientY);
+      function moveAt(x,y){ clon.style.left=(x-offX)+'px'; clon.style.top=(y-offY)+'px'; }
+      function onMove(ev){ moveAt(ev.clientX,ev.clientY); onHover(ev.clientX,ev.clientY); }
+      function onUp(ev){ document.removeEventListener('pointermove',onMove); document.removeEventListener('pointerup',onUp); dropInto(ev.clientX,ev.clientY,clon); clon.remove(); }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp, {once:true});
+    });
+  }
+
+  function elementAt(x,y){ return document.elementFromPoint(x,y); }
+
+  function onHover(x,y){
+    $$('.cell').forEach(c=>c.classList.remove('drop-ok'));
+    const el = elementAt(x,y);
+    const cell = el && (el.classList.contains('cell') ? el : el.closest?.('.cell'));
+    if(cell) cell.classList.add('drop-ok');
+  }
+
+  function dropInto(x,y,ghost){
+    $$('.cell').forEach(c=>c.classList.remove('drop-ok'));
+    const el = elementAt(x,y);
+    const cell = el && (el.classList.contains('cell') ? el : el.closest?.('.cell'));
+    if(!cell) return false;
+    const val = ghost.textContent.trim();
+    if(ghost.dataset.t==='eraser' || val==='🧽'){ clearCell(cell); return true; }
+    setCellDigit(cell, val); return true;
+  }
+
+  function setCellDigit(cell, digit){
+    const prev = cell.dataset.digit; if(!prev) filled++;
+    cell.dataset.digit = digit; cell.textContent = digit; cell.classList.add('filled');
+    cell.classList.remove('wrong','correct','autofill');
+    removeMark(cell);
+    updateScorePartial();
+  }
+
+  function clearCell(cell){
+    if(cell.dataset.digit){ filled = Math.max(0, filled-1); }
+    cell.textContent=''; cell.dataset.digit=''; cell.classList.remove('filled','wrong','correct','autofill');
+    removeMark(cell);
+    updateScorePartial();
+  }
+
+  function updateScorePartial(){
+    const total = ROWS * 6; // 6 casillas por fila
+    let correct = 0;
+    $$('.cell').forEach(cell=>{
+      const row = Number(cell.dataset.row); const key = cell.dataset.key; const d = cell.dataset.digit;
+      if(d && data[row] && data[row].digits[key] === d) correct++;
+    });
+    setScore((correct/total)*100);
+  }
+
+  function setMark(cell, ok){
+    removeMark(cell);
+    const m = document.createElement('div');
+    m.className = 'mark ' + (ok ? 'ok' : 'bad');
+    m.textContent = ok ? '✓' : '✖'; m.title = ok ? 'Correcto' : 'Incorrecto';
+    cell.appendChild(m);
+    cell.classList.toggle('correct', !!ok);
+    cell.classList.toggle('wrong', !ok && !!cell.dataset.digit);
+  }
+  function removeMark(cell){
+    const m = cell.querySelector('.mark'); if(m) m.remove();
+  }
+
+  function checkAll(){
+    // 1) Si el switch está activado, auto-completa con 0 donde corresponde
+    const auto = document.getElementById('autoZero')?.checked;
+    if(auto){
+      $$('.cell').forEach(cell=>{
+        const row = Number(cell.dataset.row); const key = cell.dataset.key;
+        const expected = data[row]?.digits?.[key];
+        if(!cell.dataset.digit && expected === '0'){
+          setCellDigit(cell, '0');
+          cell.classList.add('autofill');
+        }
+      });
+    }
+
+    // 2) Calcular resultado y marcar ✓ / ✖
+    let correctCount = 0; const total = ROWS * 6;
+    $$('.cell').forEach(cell=>{
+      const row = Number(cell.dataset.row); const key = cell.dataset.key; const d = cell.dataset.digit;
+      const ok = (d && data[row] && data[row].digits[key] === d);
+      if(d){ setMark(cell, !!ok); }
+      if(ok) correctCount++;
+    });
+
+    const val = (correctCount/total)*100;
+    setScore(val);
+    showResult(val);
+  }
+
+  function showResult(val){
+    const title = document.getElementById('resultTitle');
+    const text  = document.getElementById('resultText');
+    const rounded = Math.round(val);  // <-- evita 99.9999
+
+    if (rounded === 100) {
+      title.textContent = '¡Has ganado!';
+      text.textContent  = '¡Sacaste un 100! 😊 Sigue así.';
+      confetti();
+    } else if (rounded >= 70) {
+      title.textContent = '¡Muy bien!';
+      text.textContent  = `Tu puntaje fue ${rounded} / 100. Revisa las casillas en rojo y vuelve a intentar.`;
+    } else {
+      title.textContent = '¡Tú puedes!';
+      text.textContent  = `Tu puntaje fue ${rounded} / 100. Practica un poco más y lo lograrás.`;
+    }
+
+    new bootstrap.Modal('#resultModal').show();
+  }
+
+  function confetti(){
+    const burst=document.createElement('div');
+    burst.style.position='fixed';
+    burst.style.inset='0';
+    burst.style.pointerEvents='none';
+    document.body.appendChild(burst);
+    const emojis=['✨','🎉','⭐','🎯','💫','🏆'];
+    for(let i=0;i<50;i++){
+      const s=document.createElement('div');
+      s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.position='absolute';
+      s.style.left=Math.random()*100+'%';
+      s.style.top='-10%';
+      s.style.fontSize=(16+Math.random()*20)+'px';
+      s.style.transition='transform 1.3s ease, opacity 1.3s ease';
+      burst.appendChild(s);
+      requestAnimationFrame(()=>{
+        s.style.transform=`translateY(${120+Math.random()*120}vh) rotate(${Math.random()*360}deg)`;
+        s.style.opacity='0';
+      });
+    }
+    setTimeout(()=>burst.remove(),1400);
+  }
+
+  function newRound(){
+    generateData(); renderTargets(); renderGrid(); renderPalette();
+  }
+
+  // eventos de botones
+  document.getElementById('resetBtn').addEventListener('click', newRound);
+  document.getElementById('checkBtn').addEventListener('click', checkAll);
+  document.getElementById('howBtn').addEventListener('click', ()=> new bootstrap.Modal('#howModal').show());
+  document.getElementById('backBtn').addEventListener('click', ()=>{
+    if (history.length > 1) history.back();
+    else window.location.href = 'index.html';
+  });
+
+  // inicio
+  newRound();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

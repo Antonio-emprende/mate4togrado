@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Decimales 4º — Ordenar números (cuadrícula alineada)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --azul:#2563eb;--verde:#10b981;--borde:#e2e8f0;--texto:#0f172a;
+    --celeste:#e0f2fe; /* columna izquierda */
+    --amarillo:#fef9c3; /* columna derecha */
+    --cell:64px;        /* tamaño base de celda (alto y ancho relativo) */
+  }
+  body{background:linear-gradient(180deg,#f8fbff 0%,#fff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto)}
+  .game-card{border:none;border-radius:1rem;box-shadow:0 10px 28px rgba(2,6,23,.08)}
+  .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .score-chip{font-weight:800;border-radius:999px;padding:.45rem 1rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+  .btn-fab{border-radius:999px;padding:.55rem .9rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+
+  /* ===== Layout 2 columnas, con separación amplia ===== */
+  .grid{
+    display:grid; grid-template-columns:1fr 1fr;
+    column-gap: 88px; row-gap: 18px;
+  }
+  @media (max-width: 768px){ .grid{grid-template-columns:1fr; column-gap:16px} }
+
+  .colbox{border:1px solid var(--borde);border-radius:14px;padding:12px}
+  .leftbox{ background:var(--celeste) }
+  .rightbox{ background:var(--amarillo) }
+  .col-title{font-weight:800;text-transform:uppercase;letter-spacing:.04em;opacity:.85;margin:2px 0 10px}
+
+  /* ===== Cuadrícula por filas: cada fila es un "rowgrid" ===== */
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .rowgrid{
+    display:grid;
+    grid-template-columns: repeat(5, 1fr); /* 5 celdas por fila */
+    gap:10px;
+  }
+
+  /* ===== Celdas ===== */
+  .cell{
+    min-height: var(--cell);
+    display:flex; align-items:center; justify-content:center;
+    border-radius:12px;
+    background:rgba(255,255,255,.35);
+  }
+  /* Celdas fuente (izquierda) mantienen el "hueco" siempre */
+  .lcell{ border:1.5px dashed #cbd5e1 }
+  .lcell.fill{ border-color:#60a5fa; background:#eaf2ff }
+
+  .rcell{ display:flex; align-items:center; justify-content:center }
+  .drop{
+    width: var(--cell); height: var(--cell); border-radius:999px;
+    border:2px dashed #94a3b8; background:rgba(255,255,255,.45);
+    position:relative; display:flex; align-items:center; justify-content:center;
+  }
+  .drop::after{ content:"•"; font-size:20px; color:#64748b; opacity:.6; position:absolute }
+  .drop.fill{ border-style:solid; border-color:#60a5fa; background:#eaf2ff }
+
+  /* Fichas (números arrastrables) */
+  .chip{
+    background:#fff;border:2px solid #dbeafe;border-radius:999px;
+    padding:.30rem .55rem;font-weight:900;cursor:grab;
+    font-variant-numeric: tabular-nums; font-feature-settings:"tnum";
+    box-shadow:0 4px 10px rgba(2,6,23,.06); user-select:none;
+  }
+  .chip:active{cursor:grabbing;transform:scale(1.03)}
+
+  /* Marca de fila */
+  .mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;font-weight:900;margin-left:6px}
+  .ok{background:#dcfce7;color:#15803d;border:2px solid #86efac}
+  .bad{background:#fee2e2;color:#b91c1c;border:2px solid #fecaca}
+
+  /* Hilera de marca a la derecha de la fila destino */
+  .rowWithMark{display:grid; grid-template-columns: 1fr max-content; gap:8px; align-items:center}
+
+  /* ===== Botón "Menú principal" inferior centrado ===== */
+  .bottom-return-wrap{
+    display:flex; justify-content:center; align-items:center;
+    margin: 18px auto 46px;
+  }
+  .btn-main-return{
+    background:#ef4444; color:#fff; border:none; border-radius:999px;
+    padding:.8rem 1.2rem; font-weight:900; box-shadow:0 10px 24px rgba(239,68,68,.35);
+    animation:blinkReturn 1.15s ease-in-out infinite;
+  }
+  @keyframes blinkReturn{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.06); }
+  }
+</style>
+</head>
+<body>
+<div class="container py-4 py-md-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xxl-10">
+      <div class="card game-card">
+        <div class="card-body p-3 p-md-4 p-lg-5">
+
+          <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div>
+              <h1 class="h3 m-0 title-badge">Decimales 4º — Ordenar números</h1>
+              <p class="text-secondary m-0">Cuadrícula alineada: arrastra de la <strong>columna celeste</strong> a la <strong>columna amarilla</strong>. Cambia el modo cuando quieras.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+              <div class="btn-group" role="group" aria-label="Modo de orden">
+                <button id="btnAsc"  class="btn btn-outline-primary btn-fab active" type="button">Menor → Mayor</button>
+                <button id="btnDesc" class="btn btn-outline-primary btn-fab"        type="button">Mayor → Menor</button>
+              </div>
+              <button id="checkBtn" class="btn btn-success btn-fab" type="button">✔️ Revisar</button>
+              <button id="resetBtn" class="btn btn-primary btn-fab" type="button">🔄 Nueva tanda</button>
+            </div>
+          </header>
+
+          <div class="grid">
+            <!-- Columna izquierda: fuente -->
+            <div class="colbox leftbox">
+              <div class="col-title">Números (arrastra)</div>
+              <div id="leftCol" class="rows" aria-label="Filas fuente"></div>
+            </div>
+
+            <!-- Columna derecha: destinos -->
+            <div class="colbox rightbox">
+              <div class="col-title">Orden (suéltalos aquí)</div>
+              <div id="rightCol" class="rows" aria-label="Filas destino"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Botón centrado inferior -->
+<div class="bottom-return-wrap">
+  <button id="mainMenuBtn" class="btn-main-return">← Menú principal</button>
+</div>
+
+<!-- Modal resultado -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center p-2 p-md-3">
+      <div class="modal-header border-0 justify-content-center"><div class="display-4">🎉✨</div></div>
+      <div class="modal-body"><h3 id="resultTitle" class="mb-2">Resultado</h3><p id="resultText" class="lead mb-0"></p></div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{"use strict";
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+
+let orderMode='asc'; // 'asc' o 'desc'
+let rows=[];         // [{id, values:[str...]}]
+const ROWS=6, COLS=5; // 6 filas, 5 números por fila
+
+/* ===== Generación de números (1–3 decimales, únicos por fila) ===== */
+function randDecimal(){
+  const places=rnd(1,3);
+  const entero=rnd(0,99);
+  const frac=String(rnd(0,Math.pow(10,places)-1)).padStart(places,'0');
+  return `${entero}.${frac}`;
+}
+function genRow(){
+  const set=new Set();
+  while(set.size<COLS){ set.add(randDecimal()); }
+  return Array.from(set);
+}
+function buildRound(){
+  rows=[];
+  for(let i=0;i<ROWS;i++){ rows.push({id:'r'+i, values:genRow()}); }
+}
+
+/* ===== Render con cuadrícula ===== */
+function chipHTML(rowId, txt){
+  return `<div class="chip" data-row="${rowId}" data-val="${txt}">${txt}</div>`;
+}
+function lcellHTML(rowId, slot, val){
+  // celda fija, mantiene sitio aunque no tenga chip
+  const inner = val ? chipHTML(rowId,val) : '';
+  return `<div class="cell lcell" data-row="${rowId}" data-slot="${slot}">${inner}</div>`;
+}
+function rcellHTML(rowId, slot){
+  return `<div class="cell rcell"><div class="drop" data-row="${rowId}" data-slot="${slot}"></div></div>`;
+}
+function render(){
+  const L=$("#leftCol"), R=$("#rightCol"); L.innerHTML=''; R.innerHTML='';
+  rows.forEach((r)=>{
+    const rowL=document.createElement('div'); rowL.className='rowgrid'; rowL.id=`rowL-${r.id}`;
+    rowL.innerHTML=r.values.map((v,i)=>lcellHTML(r.id,i,v)).join('');
+    L.appendChild(rowL);
+
+    const rowR=document.createElement('div'); rowR.className='rowWithMark'; rowR.id=`rowR-${r.id}`;
+    const gridR=document.createElement('div'); gridR.className='rowgrid';
+    gridR.innerHTML=Array.from({length:COLS},(_,i)=>rcellHTML(r.id,i)).join('');
+    const mark=document.createElement('span'); mark.id=`mk-${r.id}`; mark.className='mark'; mark.style.visibility='hidden'; mark.textContent='✓';
+    rowR.appendChild(gridR); rowR.appendChild(mark);
+    R.appendChild(rowR);
+  });
+  makeAllDraggable();
+  setScore(0);
+}
+
+/* ===== Drag & Drop con celdas fijas ===== */
+let dragging=null, ghost=null, originCell=null;
+function makeAllDraggable(){ $$('.chip').forEach(makeDraggable); }
+function makeDraggable(src){
+  src.addEventListener('pointerdown',(e)=>{
+    e.preventDefault();
+    dragging=src; originCell=src.parentElement; // la celda .lcell o .drop (dentro de .rcell)
+    ghost=src.cloneNode(true); ghost.style.position='fixed'; ghost.style.zIndex='1100';
+    ghost.style.pointerEvents='none'; ghost.style.filter='drop-shadow(0 10px 16px rgba(0,0,0,.25))';
+    document.body.appendChild(ghost);
+    moveGhost(e.clientX,e.clientY);
+    highlight(e.clientX,e.clientY);
+    const move=ev=>{ moveGhost(ev.clientX,ev.clientY); highlight(ev.clientX,ev.clientY); };
+    const up=ev=>{
+      document.removeEventListener('pointermove',move);
+      document.removeEventListener('pointerup',up);
+      dropAt(ev.clientX,ev.clientY);
+      if(ghost) ghost.remove(); ghost=null; dragging=null; originCell=null;
+    };
+    document.addEventListener('pointermove',move,{passive:true});
+    document.addEventListener('pointerup',up,{once:true});
+  });
+}
+function moveGhost(x,y){
+  const r=ghost.getBoundingClientRect(); ghost.style.left=(x-r.width/2)+'px'; ghost.style.top=(y-r.height/2)+'px';
+}
+function elementAt(x,y){ return document.elementFromPoint(x,y); }
+function highlight(x,y){
+  $$('.lcell, .drop').forEach(d=>d.classList.remove('fill'));
+  const el=elementAt(x,y);
+  const lcel = el && (el.classList?.contains('lcell')?el:el.closest?.('.lcell'));
+  const dro  = el && (el.classList?.contains('drop')?el:el.closest?.('.drop'));
+  if(dragging){
+    if(lcel && lcel.dataset.row===dragging.dataset.row) lcel.classList.add('fill');
+    if(dro  && dro.dataset.row===dragging.dataset.row)  dro.classList.add('fill');
+  }
+}
+function dropAt(x,y){
+  $$('.lcell, .drop').forEach(d=>d.classList.remove('fill'));
+  const el=elementAt(x,y);
+  const lcel = el && (el.classList?.contains('lcell')?el:el.closest?.('.lcell'));
+  const dro  = el && (el.classList?.contains('drop') ?el:el.closest?.('.drop'));
+  const sameRowTarget = (t)=> t && dragging && t.dataset.row===dragging.dataset.row;
+
+  if(dro && sameRowTarget(dro)){
+    // si hay chip dentro del drop, devuélvelo a la primera lcell vacía de la fila
+    const inside = dro.querySelector('.chip');
+    if(inside){
+      const back = findFirstEmptyLCell(dro.dataset.row);
+      if(back) back.appendChild(inside);
+      else { // si no hay vacías, regrésalo a su celda origen
+        originCell.appendChild(inside);
+      }
+    }
+    dro.innerHTML=''; dro.appendChild(dragging);
+    return;
+  }
+  if(lcel && sameRowTarget(lcel)){
+    // si la lcell ya tenía chip, lo intercambiamos
+    const inside = lcel.querySelector('.chip');
+    if(inside){ originCell.appendChild(inside); }
+    lcel.innerHTML=''; lcel.appendChild(dragging);
+    return;
+  }
+  // Si no cayó en objetivo válido, regresa a su celda original
+  if(originCell){ originCell.appendChild(dragging); }
+}
+
+function findFirstEmptyLCell(rowId){
+  const cells = $$(`#rowL-${rowId} .lcell`);
+  return cells.find(c=>!c.querySelector('.chip')) || null;
+}
+
+/* ===== Lógica de revisión ===== */
+function toNum(s){ return Number(s.replace(',','.')); }
+function sortedOf(arr){
+  const nums=arr.map(toNum).slice().sort((a,b)=>a-b);
+  return orderMode==='asc'? nums : nums.reverse();
+}
+function collectRow(rowId){
+  const cells = $$(`#rowR-${rowId} .drop`);
+  return cells.map(c=> c.querySelector('.chip')?.dataset.val || null);
+}
+function checkAll(){
+  let ok=0;
+  rows.forEach(r=>{
+    const chosen=collectRow(r.id);
+    const full = chosen.every(v=>v!==null);
+    const correct = full && chosen.map(toNum).every((v,i)=> v===sortedOf(r.values)[i]);
+    const mk=$(`#mk-${r.id}`); mk.style.visibility='visible'; mk.textContent=correct?'✓':'✖'; mk.className='mark '+(correct?'ok':'bad');
+    if(correct) ok++;
+  });
+  const val=(ok/rows.length)*100; setScore(val); showResult(val);
+}
+function setScore(v){ $('#score').textContent=`Puntaje: ${Math.round(v)} / 100`; }
+function showResult(val){
+  const t=$('#resultTitle'), txt=$('#resultText');
+  if(val===100){ t.textContent='¡Has ganado!'; txt.textContent='¡Todo ordenado perfecto! 😊'; confetti(); }
+  else if(val>=70){ t.textContent='¡Muy bien!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Completa o corrige las filas en rojo.`; }
+  else { t.textContent='Sigue practicando'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100.`; }
+  new bootstrap.Modal('#resultModal').show();
+}
+function confetti(){
+  const burst=document.createElement('div');
+  burst.style.position='fixed'; burst.style.inset='0'; burst.style.pointerEvents='none'; burst.style.zIndex='2000';
+  document.body.appendChild(burst);
+  const emojis=['✨','🎉','⭐','🎯','💫','🏆','🎈','🥳'];
+  for(let i=0;i<80;i++){
+    const s=document.createElement('div');
+    s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    s.style.position='absolute'; s.style.left=Math.random()*100+'%'; s.style.top='-10%';
+    s.style.fontSize=(16+Math.random()*24)+'px'; s.style.transition='transform 1.6s ease, opacity 1.6s ease';
+    burst.appendChild(s);
+    requestAnimationFrame(()=>{ s.style.transform=`translateY(${120+Math.random()*140}vh) rotate(${Math.random()*360}deg)`; s.style.opacity='0'; });
+  }
+  setTimeout(()=>burst.remove(),1700);
+}
+
+/* ===== Controles ===== */
+function setMode(mode){
+  orderMode=mode;
+  $('#btnAsc').classList.toggle('active', mode==='asc');
+  $('#btnDesc').classList.toggle('active', mode==='desc');
+}
+function newRound(){ buildRound(); render(); }
+
+document.addEventListener('click',(e)=>{
+  if(e.target.id==='checkBtn') checkAll();
+  if(e.target.id==='resetBtn') newRound();
+  if(e.target.id==='btnAsc') setMode('asc');
+  if(e.target.id==='btnDesc') setMode('desc');
+});
+
+/* Botón Menú principal */
+(function initMainBtn(){
+  const btn = document.getElementById('mainMenuBtn');
+  if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    if(history.length > 1) history.back();
+    else window.location.href = 'index.html';
+  });
+})();
+
+/* Inicio */
+newRound();
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

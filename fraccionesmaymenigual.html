@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fracciones 4º — Comparar fracciones (módulo separado)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root{--azul:#2563eb;--verde:#10b981;--amarillo:#f59e0b;--rojo:#ef4444;--gris:#f1f5f9;--texto:#0f172a;--borde:#e2e8f0}
+    body{background:linear-gradient(180deg,#f8fbff 0%,#fff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto)}
+    .game-card{border:none;border-radius:1rem;box-shadow:0 10px 28px rgba(2,6,23,.08)}
+    .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+    .score-chip{font-weight:800;border-radius:999px;padding:.45rem 1rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+    .btn-fab{border-radius:999px;padding:.65rem 1rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+
+    .task{border:1px solid var(--borde);border-radius:14px;padding:1rem;background:#fff}
+    .task h3{font-size:1.05rem;margin:0 0 .25rem;font-weight:800;color:#0b1b44}
+    .badge-kind{background:#f1f5f9;border:1px solid #e2e8f0;color:#0f172a;border-radius:999px;padding:.15rem .5rem;font-size:.75rem;font-weight:800}
+    .mark{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+    .ok{background:#dcfce7;color:#15803d;border:2px solid #86efac}
+    .bad{background:#fee2e2;color:#b91c1c;border:2px solid #fecaca;animation:shake .35s ease}
+    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-2px)}50%{transform:translateX(2px)}75%{transform:translateX(-2px)}100%{transform:translateX(0)}}
+
+    .frac{display:inline-grid;grid-template-rows:auto auto;line-height:1;vertical-align:middle}
+    .frac .top{border-bottom:3px solid #111;padding:0 .35rem;text-align:center;font-weight:900}
+    .frac .bottom{text-align:center;padding:.05rem .35rem;font-weight:900}
+  </style>
+</head>
+<body>
+  <div class="container py-4 py-md-5">
+    <div class="row justify-content-center">
+      <div class="col-12 col-xxl-10">
+        <div class="card game-card">
+          <div class="card-body p-3 p-md-4 p-lg-5">
+
+            <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+              <div>
+                <h1 class="h3 m-0 title-badge">Fracciones 4º — Comparar fracciones</h1>
+                <p class="text-secondary m-0">Módulo independiente para practicar <strong>mayor que, menor que e igual</strong> entre fracciones. Ligero y listo para móvil.</p>
+              </div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+                <button id="howBtn" class="btn btn-outline-secondary btn-fab">❓ ¿Cómo jugar?</button>
+                <button id="checkBtn" class="btn btn-success btn-fab">✔️ Revisar</button>
+                <button id="resetBtn" class="btn btn-primary btn-fab">🔄 Nueva tanda</button>
+              </div>
+            </header>
+
+            <div class="row g-3">
+              <div class="col-12">
+                <div id="tasks" class="row g-3">
+                  <!-- Tarjetas de ejercicios -->
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 small text-muted">Tip: usa el selector para elegir <strong>&gt;</strong>, <strong>=</strong> o <strong>&lt;</strong> según corresponda.</div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal ¿Cómo jugar? -->
+  <div class="modal fade" id="howModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content p-3">
+        <div class="modal-header border-0">
+          <h5 class="modal-title">¿Cómo se juega?</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <ol class="mb-0 ps-3">
+            <li>Observa las <strong>dos fracciones</strong> de cada ejercicio.</li>
+            <li>Elige del selector el signo correcto: <strong>&gt;</strong>, <strong>=</strong> o <strong>&lt;</strong>.</li>
+            <li>Pulsa <strong>✔️ Revisar</strong> para ver ✓ y ✖ y tu nota. Con <strong>🔄 Nueva tanda</strong> obtienes nuevos ejercicios.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal resultado -->
+  <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-center p-2 p-md-3">
+        <div class="modal-header border-0 justify-content-center">
+          <div class="display-4">🎉✨</div>
+        </div>
+        <div class="modal-body">
+          <h3 id="resultTitle" class="mb-2">¡Excelente!</h3>
+          <p id="resultText" class="lead mb-0"></p>
+        </div>
+        <div class="modal-footer border-0 justify-content-center">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ========= Utilidades =========
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const rndInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a; // [a,b]
+
+  function buildCard(idx, kind, promptHTML, inputHTML){
+    return `
+      <div class="col-12 col-md-6">
+        <div class="task h-100">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <h3>Ejercicio ${idx+1}</h3>
+            <span class="badge-kind">${kind}</span>
+          </div>
+          <div class="mb-2">${promptHTML}</div>
+          <div id="t${idx}-wrap">${inputHTML}</div>
+          <div class="mt-2"><span id="t${idx}-mark" class="mark" style="visibility:hidden">✓</span></div>
+        </div>
+      </div>`
+  }
+
+  // ========= Generador: Comparar fracciones =========
+  function genCMP(){
+    const items = [];
+
+    // Garantizamos algunos casos de igualdad exacta
+    for(let i=0;i<2;i++){
+      const b = rndInt(2,9);
+      const a = rndInt(1,b-1);
+      const k = rndInt(2,3);
+      const c = a*k, d = b*k; // a/b == c/d
+      items.push([a,b,c,d]);
+    }
+
+    // Resto: mezcla de denominadores iguales/diferentes
+    while(items.length < 8){
+      const sameD = Math.random() < 0.5; // 50% mismos denominadores
+      let a,b,c,d;
+      if(sameD){
+        b = rndInt(2,12); a = rndInt(1,b-1); d = b; c = rndInt(1,d-1);
+      } else {
+        b = rndInt(2,12); d = rndInt(2,12);
+        a = rndInt(1,b-1); c = rndInt(1,d-1);
+      }
+      items.push([a,b,c,d]);
+    }
+
+    return items.slice(0,8).map((t,i)=>{
+      const [a,b,c,d]=t; const va=a*d, vb=c*b; const corr = va===vb?'=':(va>vb?'>':'<');
+      const prompt = `Elige el signo correcto: <span class="frac"><span class="top">${a}</span><span class="bottom">${b}</span></span> ( ) <span class="frac"><span class="top">${c}</span><span class="bottom">${d}</span></span>`;
+      const input = `<select class="form-select" style="width:90px" id="t${i}-op" aria-label="Selecciona el signo">
+        <option value=">">&gt;</option>
+        <option value="=">=</option>
+        <option value="<">&lt;</option>
+      </select>`;
+      const check = (map)=> (map['t'+i+'-op']||'')===corr;
+      return {html:buildCard(i,'Comparar fracciones',prompt,input), check};
+    });
+  }
+
+  // ========= Estado / Render =========
+  let cards = [];
+  function renderAll(){
+    const wrap = $('#tasks');
+    wrap.innerHTML = cards.map(x=>x.html).join('');
+    setScore(0);
+  }
+  function setScore(v){ $('#score').textContent = `Puntaje: ${Math.round(v)} / 100`; }
+  function collect(){
+    const map={};
+    $$('select').forEach(el=> map[el.id]= el.value.trim());
+    return map;
+  }
+  function checkAll(){
+    const map = collect(); let okc=0;
+    cards.forEach((c,i)=>{
+      const ok = !!c.check(map);
+      const mk = $(`#t${i}-mark`); mk.style.visibility='visible'; mk.textContent = ok? '✓':'✖'; mk.className = 'mark ' + (ok?'ok':'bad');
+      if(ok) okc++;
+    });
+    const val = (okc/cards.length)*100; setScore(val); showResult(val);
+  }
+  function showResult(val){
+    const title = $('#resultTitle'); const text = $('#resultText');
+    if(val === 100){ title.textContent = '¡Has ganado!'; text.textContent = '¡Sacaste un 100! 😊 Sigue así.'; }
+    else if(val >= 70){ title.textContent = '¡Muy bien!'; text.textContent = `Tu puntaje fue ${val.toFixed(0)} / 100. Revisa los que quedaron en rojo y vuelve a intentar.`; }
+    else { title.textContent = '¡Tú puedes!'; text.textContent = `Tu puntaje fue ${val.toFixed(0)} / 100. Practica un poco más y lo lograrás.`; }
+    new bootstrap.Modal('#resultModal').show();
+  }
+
+  function newRound(){
+    cards = genCMP();
+    renderAll();
+  }
+
+  // Eventos
+  document.addEventListener('click',(e)=>{
+    if(e.target.id==='checkBtn') checkAll();
+    if(e.target.id==='resetBtn') newRound();
+    if(e.target.id==='howBtn') new bootstrap.Modal('#howModal').show();
+  });
+
+  // Inicio
+  newRound();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Matemáticas 4.º – Líneas paralelas (v2 aleatoria)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --azul:#2563eb; --verde:#10b981; --amarillo:#f59e0b; --rojo:#ef4444; --morado:#7c3aed;
+    --gris:#f1f5f9; --borde:#e2e8f0; --texto:#0f172a;
+    --radius:18px; --shadow:0 10px 28px rgba(2,6,23,.08);
+  }
+  body{background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto)}
+  .game-card{border:none;border-radius:1rem;box-shadow:var(--shadow)}
+  .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .score-chip{font-weight:800;border-radius:999px;padding:.45rem .95rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+  .mode-chip{font-weight:700;border-radius:999px;padding:.35rem .8rem;background:#f1f5f9;border:1px solid var(--borde);color:#334155}
+
+  .btn-fab{border-radius:999px;padding:.65rem 1rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+
+  /* piezas */
+  .piece{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:120px;
+         background:#fff;border:2px solid var(--borde);border-radius:14px;padding:.6rem .8rem;
+         cursor:grab;user-select:none;touch-action:none;box-shadow:0 8px 22px rgba(2,6,23,.06)}
+  .piece:active{cursor:grabbing;transform:scale(1.04)}
+  .piece .name{font-weight:800;font-size:.95rem;text-align:center}
+  .dragging{position:fixed;z-index:1000;pointer-events:none;filter:drop-shadow(0 10px 16px rgba(0,0,0,.25))}
+
+  /* zonas destino */
+  .dropzone{min-height:140px;background:var(--gris);border:2px dashed var(--borde);border-radius:var(--radius);
+            padding:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;justify-content:flex-start}
+  .dropzone.ok{border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.15) inset}
+  .dropzone.good{border-style:solid;background:#f0fdf4;border-color:#86efac}
+  .dropzone.bad{border-style:solid;background:#fff1f2;border-color:#fecaca}
+
+  .bank{min-height:120px;background:#fff;border:2px solid var(--borde);border-radius:var(--radius);padding:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+  .hint{font-size:.9rem}
+
+  .section{border:1px solid var(--borde);border-radius:16px;padding:14px;background:#fff}
+  .section h3{font-size:1.05rem;margin-bottom:.35rem}
+
+  .icon{width:120px;height:70px}
+
+  @media (max-width:576px){
+    .piece{min-width:110px}
+    .icon{width:110px;height:64px}
+  }
+
+  /* Botón “Menú principal” (parpadeante) */
+  .btn-main-return{
+    background:#ef4444; color:#fff; border:none; border-radius:999px;
+    padding:.8rem 1.2rem; font-weight:900; box-shadow:0 10px 24px rgba(239,68,68,.35);
+    animation:blinkReturn 1.15s ease-in-out infinite;
+  }
+  @keyframes blinkReturn{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.06); }
+  }
+</style>
+</head>
+<body>
+<div class="container py-4 py-md-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+      <div class="card game-card">
+        <div class="card-body p-3 p-md-4 p-lg-5">
+
+          <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div>
+              <h1 class="h3 m-0 title-badge">Matemáticas 4.º – Juego de Líneas paralelas <span class="text-muted">(v2)</span></h1>
+              <p class="text-secondary m-0">Arriba puede ser <strong>Paralelas</strong> o <strong>No paralelas</strong> (se alterna). ¡Gana puntos!</p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span id="layoutBadge" class="mode-chip">Arriba: —</span>
+              <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+              <button id="howBtn" class="btn btn-outline-secondary btn-fab">❓ ¿Cómo jugar?</button>
+              <button id="checkBtn" class="btn btn-success btn-fab">✔️ Revisar</button>
+              <button id="resetBtn" class="btn btn-primary btn-fab">🔄 Nueva ronda</button>
+            </div>
+          </header>
+
+          <div class="row g-3">
+            <div class="col-12 col-lg-5">
+              <div class="section">
+                <h3>Banco de parejas de líneas</h3>
+                <p class="text-secondary small mb-2">Arrastra a la categoría correcta.</p>
+                <div id="bank-lines" class="bank"></div>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-7">
+              <div class="section mb-3">
+                <h3 id="hdr-top">Paralelas</h3>
+                <div id="dz-top" class="dropzone" data-accept="paralelas" aria-label="Zona superior"></div>
+                <div id="hint-top" class="hint text-success mt-2"></div>
+              </div>
+
+              <div class="section">
+                <h3 id="hdr-bottom">No paralelas</h3>
+                <div id="dz-bottom" class="dropzone" data-accept="no-paralelas" aria-label="Zona inferior"></div>
+              </div>
+
+              <!-- Botón centrado en la columna derecha, debajo de las zonas -->
+              <div class="text-center mt-3">
+                <button id="mainMenuBtn" class="btn-main-return">← Menú principal</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 small text-muted">Consejo: si una pieza vuelve al banco es que no pertenece a esa zona. ¡Sigue intentando! 😊</div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ¿Cómo jugar? -->
+<div class="modal fade" id="howModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">¿Cómo se juega?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <ol class="mb-0 ps-3">
+          <li>Arrastra las <strong>5 tarjetas</strong> desde el banco a la categoría correcta.</li>
+          <li>En cada ronda, <strong>la categoría de arriba cambia al azar</strong>.</li>
+          <li>El <strong>puntaje</strong> sube en vivo; con 100 sale confeti 🎉.</li>
+          <li>Usa <strong>✔️ Revisar</strong> para ver ✓/✖ en cada pieza.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal resultado -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center p-2 p-md-3">
+      <div class="modal-header border-0 justify-content-center">
+        <div style="font-size:48px">🎉✨</div>
+      </div>
+      <div class="modal-body">
+        <h3 id="resultTitle" class="mb-2">¡Excelente!</h3>
+        <p id="resultText" class="lead mb-0"></p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ===== util ===== */
+  const $  = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  let score = 0, celebrated = false;
+  function setScore(v){ score = Math.round(v); $('#score').textContent = `Puntaje: ${score} / 100`; }
+
+  /* ===== SVG helpers ===== */
+  function linesParallelHorizontal(){ return '<svg class="icon" viewBox="0 0 120 70" aria-hidden="true"><line x1="12" y1="20" x2="108" y2="20" stroke="#0f172a" stroke-width="4"/><line x1="12" y1="50" x2="108" y2="50" stroke="#0f172a" stroke-width="4"/></svg>'; }
+  function linesParallelVertical(){   return '<svg class="icon" viewBox="0 0 120 70" aria-hidden="true"><line x1="40" y1="10" x2="40" y2="60" stroke="#0f172a" stroke-width="4"/><line x1="80" y1="10" x2="80" y2="60" stroke="#0f172a" stroke-width="4"/></svg>'; }
+  function linesParallelDiagonal(){   return '<svg class="icon" viewBox="0 0 120 70" aria-hidden="true"><line x1="10" y1="60" x2="70" y2="10" stroke="#0f172a" stroke-width="4"/><line x1="50" y1="60" x2="110" y2="10" stroke="#0f172a" stroke-width="4"/></svg>'; }
+  function linesIntersect(){          return '<svg class="icon" viewBox="0 0 120 70" aria-hidden="true"><line x1="20" y1="15" x2="100" y2="55" stroke="#991b1b" stroke-width="4"/><line x1="20" y1="55" x2="100" y2="15" stroke="#991b1b" stroke-width="4"/></svg>'; }
+  function linesDiverge(){            return '<svg class="icon" viewBox="0 0 120 70" aria-hidden="true"><line x1="20" y1="58" x2="100" y2="40" stroke="#b45309" stroke-width="4"/><line x1="20" y1="12" x2="100" y2="20" stroke="#b45309" stroke-width="4"/></svg>'; }
+
+  /* ===== datos ===== */
+  const LINES = [
+    {id:'ph', kind:'paralelas',    name:'Paralelas horizontales',     svg:linesParallelHorizontal()},
+    {id:'pv', kind:'paralelas',    name:'Paralelas verticales',       svg:linesParallelVertical()},
+    {id:'pd', kind:'paralelas',    name:'Paralelas diagonales (45°)', svg:linesParallelDiagonal()},
+    {id:'n1', kind:'no-paralelas', name:'No paralelas (cruzadas)',    svg:linesIntersect()},
+    {id:'n2', kind:'no-paralelas', name:'No paralelas (divergen)',    svg:linesDiverge()}
+  ];
+
+  const LAYOUTS = [
+    {top:'paralelas',    bottom:'no-paralelas'},
+    {top:'no-paralelas', bottom:'paralelas'}
+  ];
+  let currentLayout = LAYOUTS[0];
+
+  /* ===== render ===== */
+  function renderBankLines(){
+    const bank = $('#bank-lines');
+    bank.innerHTML='';
+    shuffle(LINES).forEach(l => bank.appendChild(makePiece(l)));
+  }
+
+  function makePiece(l){
+    const el = document.createElement('div');
+    el.className='piece';
+    el.dataset.type='lin';
+    el.dataset.kind=l.kind; // 'paralelas' | 'no-paralelas'
+    el.dataset.id=l.id;
+    el.innerHTML = `${l.svg}<div class="name">${l.name}</div>`;
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== layout aleatorio ===== */
+  function applyLayout(layout){
+    currentLayout = layout;
+    $('#hdr-top').textContent    = layout.top==='paralelas' ? 'Paralelas' : 'No paralelas';
+    $('#hdr-bottom').textContent = layout.bottom==='paralelas' ? 'Paralelas' : 'No paralelas';
+    $('#dz-top').dataset.accept = layout.top;
+    $('#dz-bottom').dataset.accept = layout.bottom;
+    $('#hint-top').textContent = layout.top==='paralelas' ? '“Líneas rectas que nunca se llegan a unir”.' : '';
+    $('#layoutBadge').textContent = `Arriba: ${layout.top==='paralelas' ? 'Paralelas' : 'No paralelas'}`;
+  }
+  function randomizeLayout(){
+    const layout = Math.random()<0.5 ? LAYOUTS[0] : LAYOUTS[1];
+    applyLayout(layout);
+  }
+
+  /* ===== drag & drop ===== */
+  function makeDraggable(src){
+    src.addEventListener('pointerdown', (e)=>{
+      const ghost = src.cloneNode(true);
+      ghost.classList.add('dragging');
+      document.body.appendChild(ghost);
+      const r = ghost.getBoundingClientRect();
+      const offX = r.width/2, offY = r.height/2;
+      moveAt(e.clientX,e.clientY);
+
+      function moveAt(x,y){ ghost.style.left=(x-offX)+'px'; ghost.style.top=(y-offY)+'px'; }
+      function onMove(ev){ moveAt(ev.clientX,ev.clientY); highlight(ev.clientX,ev.clientY); }
+      function onUp(ev){
+        document.removeEventListener('pointermove',onMove);
+        document.removeEventListener('pointerup',onUp);
+        const done = drop(ev.clientX,ev.clientY, src);
+        if(!done) bounce(src);
+        ghost.remove(); clearHighlights();
+      }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp, {once:true});
+    });
+  }
+
+  function elementAt(x,y){ return document.elementFromPoint(x,y); }
+  function highlight(x,y){
+    clearHighlights();
+    const el = elementAt(x,y);
+    const dz = el ? (el.classList && el.classList.contains('dropzone') ? el : (el.closest && el.closest('.dropzone'))) : null;
+    if(dz) dz.classList.add('ok');
+  }
+  function clearHighlights(){ $$('.dropzone').forEach(d=>d.classList.remove('ok')); }
+
+  function drop(x,y, src){
+    const el = elementAt(x,y);
+    const dz = el ? (el.classList && el.classList.contains('dropzone') ? el : (el.closest && el.closest('.dropzone'))) : null;
+    if(!dz || src.dataset.type!=='lin') return false;
+
+    const accept = dz.dataset.accept;
+    const kind   = src.dataset.kind;
+
+    if(accept === kind){
+      dz.classList.add('good'); dz.classList.remove('bad');
+      dz.appendChild(src);
+      src.dataset.correct='1';
+    }else{
+      dz.classList.add('bad'); dz.classList.remove('good');
+      src.dataset.correct='0';
+      document.getElementById('bank-lines').appendChild(src);
+    }
+    computeAndSetScoreLive();
+    return true;
+  }
+
+  function bounce(el){
+    el.animate(
+      [{transform:'translateY(0)'},{transform:'translateY(-6px)'},{transform:'translateY(0)'}],
+      {duration:180,iterations:2}
+    );
+  }
+
+  /* ===== Puntaje ===== */
+  function computeAndSetScoreLive(){
+    const total = LINES.length; // 5
+    let ok = 0;
+    $$('.piece').forEach(p=>{ if(p.dataset.correct==='1') ok++; });
+    const val = (ok/total)*100;
+    setScore(val);
+    if(val===100 && !celebrated){ confetti(); celebrated=true; }
+  }
+
+  function checkAll(){
+    const total = LINES.length;
+    let ok = 0;
+    $$('.piece').forEach(p=>{
+      if(p.dataset.correct==='1'){ ok++; p.style.borderColor='#86efac'; p.style.background='#f0fdf4'; }
+      else if(p.dataset.correct==='0'){ p.style.borderColor='#fecaca'; p.style.background='#fff1f2'; }
+    });
+    const val = (ok/total)*100;
+    setScore(val);
+    showResult(val);
+    if(val===100){ celebrated=true; }
+  }
+
+  function showResult(val){
+    const t = document.getElementById('resultTitle'), txt = document.getElementById('resultText');
+    if(val===100){ t.textContent='¡Has ganado!'; txt.textContent='¡Sacaste un 100! 😊'; }
+    else if(val>=70){ t.textContent='¡Muy bien!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Revisa piezas en rojo y vuelve a intentar.`; }
+    else { t.textContent='¡Tú puedes!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Practica un poquito más.`; }
+    if(window.bootstrap){ new bootstrap.Modal('#resultModal').show(); }
+    else { alert(`${t.textContent}\n${txt.textContent}`); }
+  }
+
+  function resetGame(){
+    celebrated=false;
+    setScore(0);
+    $$('.piece').forEach(p=>{ p.dataset.correct=''; p.style.borderColor=''; p.style.background=''; });
+    document.getElementById('dz-top').innerHTML='';
+    document.getElementById('dz-bottom').innerHTML='';
+    renderBankLines();
+    randomizeLayout();
+  }
+
+  /* ===== extras ===== */
+  function shuffle(arr){ return arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]); }
+  function confetti(){
+    const burst=document.createElement('div'); burst.style.position='fixed'; burst.style.inset='0'; burst.style.pointerEvents='none'; document.body.appendChild(burst);
+    const emojis=['✨','🎉','⭐','🎯','💫','🏆'];
+    for(let i=0;i<60;i++){
+      const s=document.createElement('div'); s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.position='absolute'; s.style.left=Math.random()*100+'%'; s.style.top='-10%';
+      s.style.fontSize=(16+Math.random()*22)+'px'; s.style.transition='transform 1.3s ease, opacity 1.3s ease';
+      burst.appendChild(s);
+      requestAnimationFrame(()=>{ s.style.transform='translateY('+ (120+Math.random()*120) +'vh) rotate('+ (Math.random()*360) +'deg)'; s.style.opacity='0'; });
+    }
+    setTimeout(()=>burst.remove(),1400);
+  }
+
+  /* ===== inicio ===== */
+  function init(){
+    setScore(0);
+    renderBankLines();
+    randomizeLayout();
+    document.getElementById('checkBtn').addEventListener('click', checkAll);
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+    document.getElementById('howBtn').addEventListener('click', ()=>{
+      if(window.bootstrap){ new bootstrap.Modal('#howModal').show(); }
+      else{ alert('Arrastra las tarjetas a las zonas correctas y presiona Revisar.'); }
+    });
+  }
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', init); }
+  else{ init(); }
+
+})();
+</script>
+
+<!-- Handler del botón de regreso -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('mainMenuBtn');
+  if(btn){
+    btn.addEventListener('click', () => {
+      if (history.length > 1) history.back();
+      else window.location.href = 'index.html';
+    });
+  }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

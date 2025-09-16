@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Matemáticas 4.º – Globo terráqueo • Cuadriláteros</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --azul:#2563eb; --verde:#10b981; --rojo:#ef4444; --morado:#7c3aed;
+    --gris:#f8fafc; --borde:#e2e8f0; --texto:#0f172a;
+    --radius:18px; --shadow:0 10px 28px rgba(2,6,23,.08);
+  }
+  body{background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto)}
+  .game-card{border:none;border-radius:1rem;box-shadow:var(--shadow)}
+  .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .score-chip{font-weight:800;border-radius:999px;padding:.45rem .95rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+  .btn-fab{border-radius:999px;padding:.65rem 1rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+
+  /* Botón Menú pequeño, rojo y parpadeando */
+  .btn-menu{
+    display:block; width:max-content; margin:14px auto 0 auto;
+    padding:.6rem 1.1rem; font-weight:800; border:none; border-radius:999px;
+    background:#ef4444; color:#fff; box-shadow:0 6px 18px rgba(239,68,68,.32);
+    animation:blink 1.15s infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+
+  /* Piezas arrastrables */
+  .piece{
+    display:flex; align-items:center; justify-content:center; gap:6px; min-width:160px;
+    background:#fff; border:2px solid var(--borde); border-radius:14px; padding:.55rem .8rem;
+    cursor:grab; user-select:none; touch-action:none; box-shadow:0 8px 22px rgba(2,6,23,.06)
+  }
+  .piece:active{cursor:grabbing; transform:scale(1.04)}
+  .piece .name{font-weight:800; font-size:.95rem; text-align:center}
+  .dragging{position:fixed; z-index:1000; pointer-events:none; filter:drop-shadow(0 10px 16px rgba(0,0,0,.25))}
+  .piece.right{box-shadow:0 0 0 2px #86efac inset}
+  .piece.wrong{box-shadow:0 0 0 2px #fecaca inset}
+
+  .bank{
+    min-height:120px; background:#fff; border:2px solid var(--borde); border-radius:var(--radius);
+    padding:10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center
+  }
+
+  .section{border:1px solid var(--borde); border-radius:16px; padding:14px; background:#fff}
+  .section h3{font-size:1.05rem; margin-bottom:.35rem}
+  .muted{color:#64748b}
+
+  /* ===== Diagrama aumentado (otro +20%) ===== */
+  .diagram-wrap{position:relative; max-width:1080px; margin:auto} /* antes 900, ahora 1080 */
+  .diagram{width:100%; height:auto; display:block; pointer-events:none}
+
+  /* Zonas y pines SOBRE el diagrama (en %) */
+  .hotpoint{
+    position:absolute; transform:translate(-50%,-50%); width:76px; height:76px; border-radius:50%;
+    border:2px dashed rgba(124,58,237,.35); background:transparent; z-index:4; pointer-events:auto
+  }
+  .hot{outline:3px solid rgba(124,58,237,.45); outline-offset:6px}
+  .pin{
+    position:absolute; width:16px; height:16px; border-radius:50%;
+    transform:translate(-50%,-50%); z-index:3; box-shadow:0 1px 4px rgba(0,0,0,.25)
+  }
+  .pin.v{background:#0ea5e9}   /* vértice/ángulo */
+  .pin.s{background:#f59e0b}   /* lado/base */
+  .pin.d{background:#10b981}   /* diagonal */
+  .pin.h{background:#ef4444}   /* altura */
+
+  .on-diagram{position:absolute; z-index:5}
+</style>
+</head>
+<body>
+<div class="container py-4 py-md-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+      <div class="card game-card">
+        <div class="card-body p-3 p-md-4 p-lg-5">
+
+          <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div>
+              <h1 class="h3 m-0 title-badge">Matemáticas 4.º – Globo terráqueo • Cuadriláteros</h1>
+              <p class="text-secondary m-0">Arrastra etiquetas al <strong>diagrama</strong> del cuadrilátero.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+              <button id="howBtn" class="btn btn-outline-secondary btn-fab" type="button">❓ ¿Cómo jugar?</button>
+              <button id="checkBtn" class="btn btn-success btn-fab" type="button">✔️ Revisar</button>
+              <button id="resetBtn" class="btn btn-primary btn-fab" type="button">🔄 Nueva ronda</button>
+            </div>
+          </header>
+
+          <div class="row g-3">
+            <!-- Columna izquierda: banco + botón menú -->
+            <div class="col-12 col-lg-5">
+              <div class="section mb-3">
+                <h3>Etiquetas del diagrama</h3>
+                <div id="bank-diag" class="bank" aria-label="Banco de etiquetas para el diagrama"></div>
+                <!-- Botón Menú principal (pequeño, parpadeando) -->
+                <button class="btn-menu" onclick="location.href='index.html'">← Menú principal</button>
+              </div>
+            </div>
+
+            <!-- Columna derecha: diagrama -->
+            <div class="col-12 col-lg-7">
+              <div class="section mb-3">
+                <h3>Cuadrilátero interactivo</h3>
+
+                <div class="diagram-wrap" id="wrap">
+                  <!-- SVG del cuadrilátero -->
+                  <svg class="diagram" viewBox="0 0 360 300" aria-label="Diagrama cuadrilátero">
+                    <rect x="0" y="0" width="360" height="300" fill="#e6f4ff" rx="14"/>
+                    <g id="shape" stroke="#334155" stroke-width="2" fill="#dbeafe">
+                      <!-- Polígono base -->
+                      <polygon id="quad" points="60,240 300,240 270,90 30,90"/>
+                    </g>
+                    <!-- diagonales -->
+                    <g id="diags" stroke="#10b981" stroke-dasharray="6 6" stroke-width="2">
+                      <line id="diagAC" x1="60" y1="240" x2="270" y2="90"/>
+                      <line id="diagBD" x1="300" y1="240" x2="30"  y2="90"/>
+                    </g>
+                    <!-- altura -->
+                    <g id="altura" stroke="#ef4444" stroke-dasharray="6 6" stroke-width="2">
+                      <line id="hline" x1="200" y1="240" x2="200" y2="120"/>
+                      <text x="206" y="180" font-size="12" fill="#ef4444">h</text>
+                    </g>
+                  </svg>
+
+                  <!-- Zonas (en %) -->
+                  <div id="zone-vert" class="hotpoint" title="Vértice"></div>
+                  <div id="zone-ang"  class="hotpoint" title="Ángulo"></div>
+                  <div id="zone-side" class="hotpoint" title="Lado"></div>
+                  <div id="zone-diag" class="hotpoint" title="Diagonal"></div>
+                  <div id="zone-alt"  class="hotpoint" title="Altura (h)"></div>
+                  <div id="zone-base" class="hotpoint" title="Lado base"></div>
+
+                  <!-- Pines guía (en %) -->
+                  <div id="pin-vert" class="pin v"></div>
+                  <div id="pin-ang"  class="pin v"></div>
+                  <div id="pin-side" class="pin s"></div>
+                  <div id="pin-diag" class="pin d"></div>
+                  <div id="pin-alt"  class="pin h"></div>
+                  <div id="pin-base" class="pin s"></div>
+                </div>
+
+                <p class="small muted mt-2">Pista: “Altura (h)” es perpendicular al <em>lado base</em>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 small text-muted">
+            Consejo: si una pieza vuelve al banco es que no pertenece a esa zona. ¡Sigue intentando! 😊
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modales -->
+<div class="modal fade" id="howModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">¿Cómo se juega?</h5>
+        <button class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <ol class="mb-0 ps-3">
+          <li>Arrastra las <strong>6 etiquetas</strong> (Vértice, Ángulo, Lado, Lado base, Diagonal y Altura) a los puntos correctos.</li>
+          <li>Si sueltas <em>cerca</em> del punto correcto, igual se ancla automáticamente.</li>
+          <li>Pulsa <strong>✔️ Revisar</strong> para ver ✓/✗ y <strong>Nueva ronda</strong> para reintentar con posiciones nuevas.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center p-2 p-md-3">
+      <div class="modal-header border-0 justify-content-center"><div style="font-size:48px">🎉✨</div></div>
+      <div class="modal-body"><h3 id="resultTitle" class="mb-2">¡Excelente!</h3><p id="resultText" class="lead mb-0"></p></div>
+      <div class="modal-footer border-0 justify-content-center"><button class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+  let score=0, celebrated=false;
+
+  function setScore(v){ score=Math.round(v); $('#score').textContent=`Puntaje: ${score} / 100`; }
+  function shuffle(a){ return a.map(x=>[Math.random(),x]).sort((x,y)=>x[0]-y[0]).map(p=>p[1]); }
+
+  /* ===== Datos etiquetas ===== */
+  const DIAG_LABELS = [
+    {id:'lbl-vert', name:'Vértice',     accept:'zone-vert'},
+    {id:'lbl-lado', name:'Lado',        accept:'zone-side'},
+    {id:'lbl-ang',  name:'Ángulo',      accept:'zone-ang'},
+    {id:'lbl-diag', name:'Diagonal',    accept:'zone-diag'},
+    {id:'lbl-alt',  name:'Altura (h)',  accept:'zone-alt'},
+    {id:'lbl-base', name:'Lado base',   accept:'zone-base'},
+  ];
+
+  /* ===== Render banco ===== */
+  function renderBank(){
+    const bd = $('#bank-diag'); bd.innerHTML='';
+    shuffle(DIAG_LABELS).forEach(info=>{
+      const tag=document.createElement('div');
+      tag.className='piece';
+      tag.dataset.accept=info.accept; tag.dataset.kind='diag';
+      tag.innerHTML=`<div class="name">${info.name}</div>`;
+      makeDraggable(tag);
+      bd.appendChild(tag);
+    });
+  }
+
+  /* ===== Diagrama: posiciones EN % (estables al escalar) ===== */
+  // Coordenadas del polígono: A(60,240) B(300,240) C(270,90) D(30,90) en viewBox 360×300
+  const P = {A:{x:60,y:240}, B:{x:300,y:240}, C:{x:270,y:90}, D:{x:30,y:90}};
+  const toPct = (x, y) => ({ xp: (x/360)*100, yp: (y/300)*100 });
+  const mid = (p,q) => ({ x:(p.x+q.x)/2, y:(p.y+p.y)/2 });
+
+  function setPct(el, xp, yp){ el.style.left=xp+'%'; el.style.top=yp+'%'; }
+
+  function randomizeDiagramZones(){
+    // Vértice ↔ Ángulo: deben ser vértices distintos
+    const verts=[P.A,P.B,P.C,P.D];
+    const vIndex=Math.floor(Math.random()*verts.length);
+    const v=verts[vIndex];
+    const pv = toPct(v.x, v.y); setPct($('#zone-vert'), pv.xp, pv.yp); setPct($('#pin-vert'), pv.xp, pv.yp);
+
+    // elegir ángulo en un vértice distinto
+    const angChoices=verts.filter((_,i)=>i!==vIndex);
+    const a=angChoices[Math.floor(Math.random()*angChoices.length)];
+    const pa = toPct(a.x, a.y); setPct($('#zone-ang'), pa.xp, pa.yp); setPct($('#pin-ang'), pa.xp, pa.yp);
+
+    // Lado: NO usar AB (reservado para base) para evitar solaparse con "Lado base"
+    const sidesExclAB=[[P.B,P.C],[P.C,P.D],[P.D,P.A]];
+    const s = sidesExclAB[Math.floor(Math.random()*sidesExclAB.length)];
+    const sm= { x:(s[0].x+s[1].x)/2, y:(s[0].y+s[1].y)/2 };
+    const ps = toPct(sm.x, sm.y); setPct($('#zone-side'), ps.xp, ps.yp); setPct($('#pin-side'), ps.xp, ps.yp);
+
+    // Diagonal: AC o BD (mitad)
+    const d = Math.random()<0.5 ? { x:(P.A.x+P.C.x)/2, y:(P.A.y+P.C.y)/2 } : { x:(P.B.x+P.D.x)/2, y:(P.B.y+P.D.y)/2 };
+    const pd = toPct(d.x, d.y); setPct($('#zone-diag'), pd.xp, pd.yp); setPct($('#pin-diag'), pd.xp, pd.yp);
+
+    // Base: mitad de AB (fijo)
+    const bmid = { x:(P.A.x+P.B.x)/2, y:(P.A.y+P.B.y)/2 };
+    const pb = toPct(bmid.x, bmid.y);
+    setPct($('#zone-base'), pb.xp, pb.yp); setPct($('#pin-base'), pb.xp, pb.yp);
+
+    // Altura: x aleatorio 140..260, centro entre base y parte alta
+    const xvb = 140 + Math.random()*120;
+    const yTop = 120;
+    const yMid = (yTop + P.A.y)/2;
+    const ph = toPct(xvb, yMid); setPct($('#zone-alt'), ph.xp, ph.yp); setPct($('#pin-alt'), ph.xp, ph.yp);
+
+    // Redibujar línea de altura en SVG (en viewBox)
+    $('#hline').setAttribute('x1', xvb);
+    $('#hline').setAttribute('x2', xvb);
+    $('#hline').setAttribute('y1', P.A.y);
+    $('#hline').setAttribute('y2', yTop);
+    const text = $('#altura text'); text.setAttribute('x', xvb+6); text.setAttribute('y', (yTop+P.A.y)/2);
+  }
+
+  /* ===== Drag & drop ===== */
+  function makeDraggable(src){
+    src.addEventListener('pointerdown',(e)=>{
+      e.preventDefault();
+      const ghost=src.cloneNode(true); ghost.classList.add('dragging'); document.body.appendChild(ghost);
+      const r=ghost.getBoundingClientRect(); const offX=r.width/2, offY=r.height/2;
+      const moveAt=(x,y)=>{ ghost.style.left=(x-offX)+'px'; ghost.style.top=(y-offY)+'px'; };
+      moveAt(e.clientX,e.clientY);
+
+      function onMove(ev){ moveAt(ev.clientX,ev.clientY); highlight(ev.clientX,ev.clientY,src); }
+      function onUp(ev){
+        document.removeEventListener('pointermove',onMove);
+        document.removeEventListener('pointerup',onUp);
+        drop(ev.clientX,ev.clientY,src);
+        ghost.remove(); clearHighlights();
+      }
+
+      document.addEventListener('pointermove',onMove,{passive:true});
+      document.addEventListener('pointerup',onUp,{once:true});
+    });
+  }
+
+  function elementAt(x,y){ return document.elementFromPoint(x,y); }
+  function highlight(x,y,src){
+    clearHighlights();
+    const el=elementAt(x,y);
+    const zone = el && el.classList && el.classList.contains('hotpoint') ? el : (el && el.closest ? el.closest('.hotpoint') : null);
+    if(zone) zone.classList.add('hot');
+  }
+  function clearHighlights(){ $$('.hotpoint').forEach(z=>z.classList.remove('hot')); }
+
+  // distancia a centro de una zona circular
+  function distanceToZone(px,py,zoneEl){
+    const rect=zoneEl.getBoundingClientRect();
+    const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+    return Math.hypot(px-cx,py-cy);
+  }
+
+  function drop(x,y,src){
+    const mustZone = $('#'+src.dataset.accept);
+    let zone = elementAt(x,y);
+    zone = zone && zone.classList && zone.classList.contains('hotpoint') ? zone : (zone && zone.closest ? zone.closest('.hotpoint') : null);
+
+    // tolerancia al centro de la zona (un poco mayor por el nuevo tamaño)
+    const TOL=64;
+    const near = distanceToZone(x,y,mustZone)<=TOL;
+    if(!zone && near) zone=mustZone;
+
+    if(zone===mustZone || near){
+      // Snap cerca del pin correspondiente (posición real y conversión al contenedor)
+      const pin = $('#pin-'+mustZone.id.split('-')[1]);         // pin-vert, pin-ang, etc
+      const wrap=$('#wrap').getBoundingClientRect();
+      const pr=pin.getBoundingClientRect();
+      const dx=22, dy=-12; // desplazamiento estético
+      const px=pr.left+pr.width/2+dx-wrap.left;
+      const py=pr.top+pr.height/2+dy-wrap.top;
+      const container=$('#wrap'); src.classList.add('on-diagram'); container.appendChild(src);
+      src.style.left=px+'px'; src.style.top=py+'px';
+      src.dataset.correct='1';
+    }else{
+      // vuelve al banco
+      src.dataset.correct='0';
+      $('#bank-diag').appendChild(src);
+      src.classList.remove('on-diagram'); src.style.left=''; src.style.top='';
+    }
+    computeScore();
+  }
+
+  /* ===== Puntaje / revisar ===== */
+  function computeScore(){
+    const total = DIAG_LABELS.length; // 6
+    let ok=0; $$('.piece').forEach(p=>{ if(p.dataset.correct==='1') ok++; });
+    const val=(ok/total)*100; setScore(val);
+    if(val===100 && !celebrated){ confetti(); celebrated=true; }
+  }
+
+  function checkAll(){
+    $$('.piece').forEach(p=>{
+      p.classList.remove('right','wrong');
+      if(p.dataset.correct==='1') p.classList.add('right');
+      else if(p.dataset.correct==='0') p.classList.add('wrong');
+    });
+    const total = DIAG_LABELS.length;
+    let ok=0; $$('.piece').forEach(p=>{ if(p.dataset.correct==='1') ok++; });
+    const val=(ok/total)*100; setScore(val);
+
+    const t=$('#resultTitle'), txt=$('#resultText');
+    if(val===100){ t.textContent='¡Has ganado!'; txt.textContent='¡Sacaste un 100! 😊'; }
+    else if(val>=70){ t.textContent='¡Muy bien!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Revisa en rojo y vuelve a intentar.`; }
+    else { t.textContent='¡Tú puedes!'; txt.textContent=`Tu puntaje fue ${val.toFixed(0)} / 100. Practica un poquito más.`; }
+
+    if(window.bootstrap){ new bootstrap.Modal('#resultModal').show(); } else { alert(`${t.textContent}\n${txt.textContent}`); }
+  }
+
+  function confetti(){
+    const burst=document.createElement('div'); burst.style.position='fixed'; burst.style.inset='0';
+    burst.style.pointerEvents='none'; burst.style.zIndex='2000'; document.body.appendChild(burst);
+    const emojis=['✨','🎉','⭐','🎯','💫','🏆'];
+    for(let i=0;i<80;i++){
+      const s=document.createElement('div'); s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.position='absolute'; s.style.left=Math.random()*100+'%'; s.style.top='-10%';
+      s.style.fontSize=(16+Math.random()*24)+'px'; s.style.transition='transform 1.6s ease, opacity 1.6s ease';
+      burst.appendChild(s);
+      requestAnimationFrame(()=>{ s.style.transform='translateY('+(120+Math.random()*140)+'vh) rotate('+(Math.random()*360)+'deg)'; s.style.opacity='0'; });
+    }
+    setTimeout(()=>burst.remove(),1700);
+  }
+
+  /* ===== Reset / init ===== */
+  function resetGame(){
+    celebrated=false; setScore(0);
+    // Quitar piezas sobre el diagrama y devolverlas
+    $$('#wrap .on-diagram').forEach(p=>{
+      p.classList.remove('on-diagram'); p.style.left=''; p.style.top=''; p.dataset.correct='';
+      $('#bank-diag').appendChild(p);
+    });
+    // limpiar estados en banco
+    $$('#bank-diag .piece').forEach(p=>{ p.classList.remove('right','wrong'); p.dataset.correct=''; });
+    randomizeDiagramZones();
+  }
+
+  function init(){
+    renderBank();
+    randomizeDiagramZones();   // posiciones en %
+    setScore(0);
+
+    // Eventos
+    $('#checkBtn').addEventListener('click',checkAll);
+    $('#resetBtn').addEventListener('click',resetGame);
+    $('#howBtn').addEventListener('click',()=>{
+      if(window.bootstrap){ new bootstrap.Modal('#howModal').show(); }
+      else{ alert('Arrastra las 6 etiquetas al diagrama; si sueltas cerca, se ancla. Usa Revisar y Nueva ronda.'); }
+    });
+
+    // re-dibujar al redimensionar (las posiciones son %; no hay que recalcular)
+    window.addEventListener('resize', ()=>{}, {passive:true});
+  }
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',init); } else { init(); }
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

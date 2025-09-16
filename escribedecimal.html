@@ -1,0 +1,390 @@
+<!DOCTYPE html> 
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decimales 4º — Número ↔ Descomposición (módulo separado)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root{--azul:#2563eb;--verde:#10b981;--amarillo:#f59e0b;--rojo:#ef4444;--gris:#f1f5f9;--texto:#0f172a;--borde:#e2e8f0;--radius:16px}
+    body{background:linear-gradient(180deg,#f8fbff 0%,#fff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto)}
+    .game-card{border:none;border-radius:1rem;box-shadow:0 10px 28px rgba(2,6,23,.08)}
+    .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+    .score-chip{font-weight:800;border-radius:999px;padding:.45rem 1rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+    .btn-fab{border-radius:999px;padding:.65rem 1rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+
+    .task{border:1px solid var(--borde);border-radius:14px;padding:1rem;background:#fff}
+    .task h3{font-size:1.05rem;margin:0 0 .25rem;font-weight:800;color:#0b1b44}
+    .badge-kind{background:#f1f5f9;border:1px solid #e2e8f0;color:#0f172a;border-radius:999px;padding:.15rem .5rem;font-size:.75rem;font-weight:800}
+    .mark{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+    .ok{background:#dcfce7;color:#15803d;border:2px solid #86efac}
+    .bad{background:#fee2e2;color:#b91c1c;border:2px solid #fecaca;animation:shake .35s ease}
+    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-2px)}50%{transform:translateX(2px)}75%{transform:translateX(-2px)}100%{transform:translateX(0)}}
+
+    /* —— Barra fija —— */
+    .sticky-toolbar{position:sticky;top:0;z-index:1050;background:#fff;border-bottom:1px solid var(--borde);padding:.5rem .75rem;border-radius:12px}
+    .palette{min-height:68px;background:var(--gris);border-radius:12px;padding:8px;display:flex;gap:8px;align-items:center;justify-content:flex-start;border:1px solid #d9e1ee;overflow:auto}
+    .tile{min-width:56px;height:56px;border-radius:12px;background:#fff;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.3rem;user-select:none;cursor:grab;box-shadow:0 6px 14px rgba(2,6,23,.06)}
+    .tile:active{cursor:grabbing;transform:scale(1.04)}
+    .tile[data-t="eraser"]{border-color:#fecaca;background:#fff1f2}
+    .dragging{position:fixed;z-index:1100;pointer-events:none;filter:drop-shadow(0 10px 16px rgba(0,0,0,.25))}
+
+    /* Drops */
+    .drops-row{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+    .drops-row.wrap{flex-wrap:wrap} /* por si la pantalla es angosta */
+    .drop{min-width:48px;min-height:48px;border:2px dashed #cbd5e1;border-radius:12px;background:#f8fafc;display:inline-flex;align-items:center;justify-content:center;padding:.25rem .4rem}
+    .drop.small{min-width:40px;min-height:40px}
+    .drop.fill{border-style:solid;border-color:#93c5fd;background:#eff6ff}
+    .drop-char{font-weight:900;font-size:1.35rem}
+    .sep{font-weight:900;font-size:1.4rem;margin-inline:.15rem}
+
+    .hint{color:#64748b}
+    .k-col{display:flex;flex-direction:column;align-items:center;gap:4px}
+    .k-label{font-size:.80rem;color:#334155;font-weight:700}
+
+    /* CARTA a ancho completo: 1 ejercicio por línea */
+    .col-ex{flex:0 0 100%;max-width:100%}
+
+    /* ===== Botón Volver (pequeño, rojo, parpadeante) dentro de la barra fija ===== */
+    .btn-volver{
+      position:absolute;           /* no empuja la paleta */
+      right:12px;
+      top:calc(50% + 16px);        /* centrado aproximado sobre la paleta */
+      transform:translateY(-50%);
+      background:#ef4444;
+      color:#fff;
+      border:none;
+      border-radius:999px;
+      padding:.35rem .8rem;
+      font-weight:900;
+      font-size:.9rem;
+      box-shadow:0 8px 18px rgba(239,68,68,.35);
+      animation:volverBlink 1.15s ease-in-out infinite;
+      z-index:1101;                /* por encima de la paleta */
+      cursor:pointer;
+    }
+    @keyframes volverBlink{
+      0%,100%{transform:translateY(-50%) scale(1);}
+      50%{transform:translateY(-50%) scale(1.05);}
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4 py-md-5">
+    <div class="row justify-content-center">
+      <div class="col-12 col-xxl-10">
+        <div class="card game-card">
+          <div class="card-body p-3 p-md-4 p-lg-5">
+
+            <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+              <div>
+                <h1 class="h3 m-0 title-badge">Decimales 4º — Número ↔ Descomposición</h1>
+                <p class="text-secondary m-0">Arrastra <strong>dígitos</strong>, la <strong>coma</strong> y el <strong>borrador</strong> a las casillas. Todo en una sola línea: <strong>D U , d c m</strong>. Cada ejercicio ocupa una fila completa.</p>
+              </div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+                <button id="howBtn" class="btn btn-outline-secondary btn-fab">❓ ¿Cómo jugar?</button>
+                <button id="checkBtn" class="btn btn-success btn-fab">✔️ Revisar</button>
+                <button id="resetBtn" class="btn btn-primary btn-fab">🔄 Nueva tanda</button>
+              </div>
+            </header>
+
+            <!-- BARRA FIJA -->
+            <div class="sticky-toolbar mb-3" id="dragRow" aria-label="Barra fija de dígitos">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-bold small text-secondary">Arrastra: 0–9, coma “,” y 🧽 para borrar</span>
+                <small class="text-muted">Siempre visible mientras te desplazas</small>
+              </div>
+              <div id="palette" class="palette"></div>
+              <!-- Botón Volver (agregado) -->
+              <button id="btnVolver" class="btn-volver" title="Volver">Volver</button>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12">
+                <div id="tasks" class="row g-3">
+                  <!-- Tarjetas de ejercicios -->
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 small text-muted">Este módulo usa <strong>decenas</strong> y <strong>unidades</strong> en la parte entera, y <strong>décimas</strong>, <strong>centésimas</strong> y <strong>milésimas</strong> en la parte decimal.</div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal ¿Cómo jugar? -->
+  <div class="modal fade" id="howModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content p-3">
+        <div class="modal-header border-0">
+          <h5 class="modal-title">¿Cómo se juega?</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <ol class="mb-0 ps-3">
+            <li><strong>Descomposición → Número:</strong> coloca <strong>D U , d c m</strong> (usa la coma “,”).</li>
+            <li><strong>Número → Descomposición:</strong> arrastra cada dígito a su casilla de <em>Decenas / Unidades / Décimas / Centésimas / Milésimas</em>.</li>
+            <li><strong>✔️ Revisar</strong> muestra ✓/✗ y nota. <strong>🔄 Nueva tanda</strong> remezcla y cambia el orden.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal resultado -->
+  <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-center p-2 p-md-3">
+        <div class="modal-header border-0 justify-content-center">
+          <div class="display-4">🎉✨</div>
+        </div>
+        <div class="modal-body">
+          <h3 id="resultTitle" class="mb-2">¡Excelente!</h3>
+          <p id="resultText" class="lead mb-0"></p>
+        </div>
+        <div class="modal-footer border-0 justify-content-center">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  /* ========= Utilidades ========= */
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const rndInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a; // [a,b]
+  const plural = (n, s, p) => n===1 ? s : p;
+  let UID=0; const uid = ()=>'u'+(UID++); // id estable por tarjeta
+
+  /* ========= Paleta + drag ========= */
+  const palette = document.getElementById('palette');
+  function makeTile(txt, kind='digit'){
+    const el = document.createElement('div');
+    el.className = 'tile'; el.textContent = txt; el.dataset.t = kind; makeDraggable(el); return el;
+  }
+  function renderPalette(){
+    if(!palette) return;
+    palette.innerHTML='';
+    for(let i=0;i<=9;i++) palette.appendChild(makeTile(i.toString(),'digit'));
+    palette.appendChild(makeTile(',', 'comma'));
+    palette.appendChild(makeTile('🧽','eraser'));
+  }
+  function makeDraggable(src){
+    src.addEventListener('pointerdown',(e)=>{
+      const ghost = src.cloneNode(true); ghost.classList.add('dragging'); document.body.appendChild(ghost);
+      const r = ghost.getBoundingClientRect(); let offX=r.width/2, offY=r.height/2;
+      moveAt(e.clientX,e.clientY);
+      function moveAt(x,y){ ghost.style.left=(x-offX)+'px'; ghost.style.top=(y-offY)+'px'; }
+      function onMove(ev){ moveAt(ev.clientX,ev.clientY); highlight(ev.clientX,ev.clientY); }
+      function onUp(ev){ document.removeEventListener('pointermove',onMove); document.removeEventListener('pointerup',onUp); dropAt(ev.clientX,ev.clientY,ghost); ghost.remove(); }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp, {once:true});
+    });
+  }
+  function elementAt(x,y){ return document.elementFromPoint(x,y); }
+  function highlight(x,y){
+    $$('.drop').forEach(d=>d.classList.remove('fill'));
+    const el = elementAt(x,y);
+    const cell = el && (el.classList?.contains('drop') ? el : el.closest?.('.drop'));
+    if(cell) cell.classList.add('fill');
+  }
+  function dropAt(x,y,ghost){
+    $$('.drop').forEach(d=>d.classList.remove('fill'));
+    const el = elementAt(x,y);
+    const cell = el && (el.classList?.contains('drop') ? el : el.closest?.('.drop'));
+    if(!cell) return;
+    const val = ghost.textContent.trim();
+    if(ghost.dataset.t==='eraser'){ setDrop(cell, ''); return; }
+    if(ghost.dataset.t==='digit' || ghost.dataset.t==='comma'){ setDrop(cell, val); }
+  }
+  function setDrop(cell, val){ cell.dataset.char = val || ''; cell.innerHTML = val? `<span class="drop-char">${val}</span>` : ''; }
+  function dropHTML(id, small=false){ return `<div class="drop ${small?'small':''}" data-id="${id}"></div>` }
+
+  /* ========= Generadores ========= */
+  function buildCard(uid, kind, promptHTML, inputHTML, hint=''){
+    return `
+      <div class="col-ex">
+        <div class="task h-100">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <h3>Ejercicio</h3>
+            <span class="badge-kind">${kind}</span>
+          </div>
+          <div class="mb-2">${promptHTML}</div>
+          <div id="${uid}-wrap">${inputHTML}</div>
+          ${hint ? `<div class="hint mt-2">${hint}</div>` : ``}
+          <div class="mt-2"><span id="${uid}-mark" class="mark" style="visibility:hidden">✓</span></div>
+        </div>
+      </div>`;
+  }
+
+  // Tipo A: Descomposición → Número (D U , d c m) — en UNA sola línea
+  function makeDecompToNumber(u){
+    // dígitos aleatorios
+    let D=rndInt(0,9), U=rndInt(0,9); if(D===0 && U===0) D=rndInt(1,9);
+    const de=rndInt(0,9), ce=rndInt(0,9), mi=rndInt(0,9);
+
+    const texto = `
+      <div>
+        ${D} ${plural(D,'decena','decenas')} + ${U} ${plural(U,'unidad','unidades')} +
+        ${de} ${plural(de,'décima','décimas')} + ${ce} ${plural(ce,'centésima','centésimas')} +
+        ${mi} ${plural(mi,'milésima','milésimas')}
+      </div>`;
+
+    const ids = {D:`${u}-D`, U:`${u}-U`, COM:`${u}-COM`, de:`${u}-de`, ce:`${u}-ce`, mi:`${u}-mi`};
+
+    const input = `
+      <div class="drops-row wrap">
+        <span class="k-label me-1">Número:</span>
+        ${dropHTML(ids.D,true)} ${dropHTML(ids.U,true)} <span class="sep">,</span>
+        ${dropHTML(ids.de,true)} ${dropHTML(ids.ce,true)} ${dropHTML(ids.mi,true)}
+      </div>`;
+
+    const check = (map)=>{
+      // Todas las casillas deben estar llenas y coincidir
+      return map[ids.D]===''+D && map[ids.U]===''+U &&
+             map[ids.de]===''+de && map[ids.ce]===''+ce && map[ids.mi]===''+mi;
+    };
+
+    return { uid:u, html: buildCard(u,'Descomposición → Número', texto, input),
+             check };
+  }
+
+  // Tipo B: Número → Descomposición — en UNA sola línea (con etiquetas arriba)
+  function makeNumberToDecomp(u){
+    let D=rndInt(0,9), U=rndInt(0,9); if(D===0 && U===0) D=rndInt(1,9);
+    const de=rndInt(0,9), ce=rndInt(0,9), mi=rndInt(0,9);
+    const numero = `${D}${U},${de}${ce}${mi}`;
+
+    const ids = {D:`${u}-dD`, U:`${u}-dU`, de:`${u}-dDE`, ce:`${u}-dCE`, mi:`${u}-dMI`};
+
+    const prompt = `<div><span class="k-label">Número:</span> <span class="fw-bold" style="font-size:1.1rem">${numero}</span></div>`;
+    const input = `
+      <div class="drops-row">
+        <div class="k-col"><div class="k-label">Decenas</div>${dropHTML(ids.D,true)}</div>
+        <div class="k-col"><div class="k-label">Unidades</div>${dropHTML(ids.U,true)}</div>
+        <div class="k-col"><div class="k-label">Décimas</div>${dropHTML(ids.de,true)}</div>
+        <div class="k-col"><div class="k-label">Centésimas</div>${dropHTML(ids.ce,true)}</div>
+        <div class="k-col"><div class="k-label">Milésimas</div>${dropHTML(ids.mi,true)}</div>
+      </div>`;
+
+    const check = (map)=>{
+      return map[ids.D]===''+D && map[ids.U]===''+U &&
+             map[ids.de]===''+de && map[ids.ce]===''+ce && map[ids.mi]===''+mi;
+    };
+
+    return { uid:u, html: buildCard(u,'Número → Descomposición', prompt, input),
+             check };
+  }
+
+  function genRound(){
+    const items=[];
+    for(let i=0;i<8;i++){
+      const u = uid();
+      items.push( (i%2===0) ? makeDecompToNumber(u) : makeNumberToDecomp(u) );
+    }
+    // mezclar orden visual
+    return items.sort(()=>Math.random()-0.5);
+  }
+
+  /* ========= Estado / Render ========= */
+  let cards = [];
+
+  function renderAll(){
+    const wrap = $('#tasks');
+    wrap.innerHTML = cards.map(x=>x.html).join('');
+    setScore(0);
+  }
+  function setScore(v){ $('#score').textContent = `Puntaje: ${Math.round(v)} / 100`; }
+
+  function collect(){
+    const map={};
+    $$('.drop').forEach(d=>{ if(d.dataset.id) map[d.dataset.id]= d.dataset.char||''; });
+    return map;
+  }
+
+  function checkAll(){
+    const map = collect(); let okc=0;
+    cards.forEach(c=>{
+      const ok = !!c.check(map);
+      const mk = document.getElementById(`${c.uid}-mark`);
+      if(mk){ mk.style.visibility='visible'; mk.textContent = ok? '✓':'✖'; mk.className = 'mark ' + (ok?'ok':'bad'); }
+      if(ok) okc++;
+    });
+    const val = (okc/cards.length)*100; setScore(val); showResult(val);
+  }
+
+  /* ========= Confeti (nuevo) ========= */
+  function confetti(){
+    const burst = document.createElement('div');
+    burst.style.position='fixed';
+    burst.style.inset='0';
+    burst.style.pointerEvents='none';
+    burst.style.zIndex='2000';
+    document.body.appendChild(burst);
+    const emojis = ['✨','🎉','⭐','🎯','💫','🏆','🎈','🥳'];
+    const N = 70;
+    for(let i=0;i<N;i++){
+      const s = document.createElement('div');
+      s.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.position='absolute';
+      s.style.left = Math.random()*100+'%';
+      s.style.top = '-10%';
+      s.style.fontSize = (16+Math.random()*24)+'px';
+      s.style.transition = 'transform 1.5s ease, opacity 1.5s ease';
+      burst.appendChild(s);
+      const dy = 120+Math.random()*140;
+      const rot = (Math.random()*360)+'deg';
+      requestAnimationFrame(()=>{
+        s.style.transform = `translateY(${dy}vh) rotate(${rot})`;
+        s.style.opacity = '0';
+      });
+    }
+    setTimeout(()=>burst.remove(),1600);
+  }
+
+  function showResult(val){
+    const title = $('#resultTitle'); const text = $('#resultText');
+    if(val === 100){
+      title.textContent = '¡Has ganado!';
+      text.textContent = '¡Sacaste un 100! 😊';
+      confetti(); /* ← dispara confeti cuando logra 100 */
+    } else if(val >= 70){
+      title.textContent = '¡Muy bien!';
+      text.textContent = `Tu puntaje fue ${val.toFixed(0)} / 100. Revisa los que quedaron en rojo y vuelve a intentar.`;
+    } else {
+      title.textContent = '¡Tú puedes!';
+      text.textContent = `Tu puntaje fue ${val.toFixed(0)} / 100. Practica un poco más y lo lograrás.`;
+    }
+    new bootstrap.Modal('#resultModal').show();
+  }
+
+  function newRound(){
+    cards = genRound();
+    renderAll();
+    renderPalette(); // barra fija
+  }
+
+  // Eventos
+  document.addEventListener('click',(e)=>{
+    if(e.target.id==='checkBtn') checkAll();
+    if(e.target.id==='resetBtn') newRound();
+    if(e.target.id==='howBtn') new bootstrap.Modal('#howModal').show();
+  });
+
+  // Botón Volver (navega hacia atrás o a index.html)
+  document.getElementById('btnVolver').addEventListener('click', ()=>{
+    if (history.length > 1) history.back();
+    else window.location.href = 'index.html';
+  });
+
+  // Inicio
+  newRound();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
