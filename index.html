@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Matemáticas • Menú Principal</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <style>
+    /* =========================================================
+       Variables, alturas y colores base
+       ========================================================= */
+    :root{
+      --azul:#2563eb; --verde:#10b981; --amarillo:#f59e0b; --rojo:#ef4444;
+      --gris:#f1f5f9; --borde:#e2e8f0; --texto:#0f172a;
+
+      /* Alturas estimadas del header/footer fijos */
+      --headerH: 72px;
+      --footerH: 68px;
+    }
+
+    /* =========================================================
+       Layout general con header y footer fijos
+       ========================================================= */
+    html, body{ height:100%; }
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+      color:var(--texto);
+      background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);
+      /* El scroll vive en <main> */
+      overflow:hidden;
+    }
+
+    /* Altura de main descontando sólo el header fijo
+       y con padding-bottom para que el footer no tape botones */
+    main{
+      position:relative;
+      height:calc(100vh - var(--headerH));
+      margin-top:var(--headerH);
+      padding-bottom:calc(var(--footerH) + 24px); /* espacio anti-solape con el footer */
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+
+    /* =========================================================
+       Estilos de navegación y tarjetas
+       ========================================================= */
+    .navbar{box-shadow:0 8px 24px rgba(2,6,23,.06)}
+    .navbar.fixed-top{ z-index:1040; } /* por encima del contenido */
+
+    .brand-grad{
+      background:linear-gradient(90deg,var(--azul),var(--verde));
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+      font-weight:900;
+    }
+
+    .card-app{
+      border:none;
+      border-radius:18px;
+      box-shadow:0 10px 28px rgba(2,6,23,.08);
+    }
+
+    .app-icon{
+      width:56px; height:56px; border-radius:14px;
+      display:grid; place-items:center; font-size:28px;
+    }
+
+    footer{ background:#0b1220; color:#cbd5e1; }
+    footer a{ color:#93c5fd; text-decoration:none; }
+
+    .menu-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(280px,1fr));
+      gap:18px;
+    }
+
+    /* Dropdown al pasar el mouse (solo escritorio) */
+    @media (min-width: 992px){
+      .navbar .dropdown:hover .dropdown-menu{ display:block; }
+      .navbar .dropdown-toggle:focus{ outline:0; }
+    }
+
+    .dropdown-menu{ min-width:16rem; }
+    .dropdown-menu .dropdown-item{ white-space:normal; }
+
+    /* Ajuste en pantallas pequeñas: header/footer un poco más bajos */
+    @media (max-width:575.98px){
+      :root{ --headerH:64px; --footerH:64px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- =======================================================
+       NAVBAR (FIJO ARRIBA)
+       ======================================================= -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+    <div class="container py-2">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <span class="app-icon bg-primary-subtle text-primary">📚</span>
+        <span class="brand-grad">Matemáticas en Familia</span>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuNav" aria-controls="menuNav" aria-expanded="false" aria-label="Alternar navegación">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="menuNav">
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+
+          <!-- ===================================================
+               Decimales (submenú)
+               =================================================== -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="dropDec" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Decimales
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="dropDec">
+              <li><a class="dropdown-item" href="rectanumerica.html">Recta Numérica</a></li>
+              <li><a class="dropdown-item" href="casitavalores.html">Casita de Valores</a></li>
+              <li><a class="dropdown-item" href="escribedecimal.html">Escribe Decimal</a></li>
+              <li><a class="dropdown-item" href="numerosconflechas.html">Números con Flechas</a></li>
+              <li><a class="dropdown-item" href="decimalesmayormenorigual.html">Decimales: Mayor / Menor / Igual</a></li>
+              <li><a class="dropdown-item" href="ordenrmayormenormayor.html">Ordenar Decimales (menor→mayor / mayor→menor)</a></li>
+              <!-- NUEVO: Temperatura en el NAV -->
+              <li><a class="dropdown-item" href="temperatura.html">Temperatura</a></li>
+            </ul>
+          </li>
+
+          <!-- ===================================================
+               Figuras (submenú)
+               =================================================== -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="dropFig" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Figuras
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="dropFig">
+              <li><a class="dropdown-item" href="figurasplanas.html">Figuras Planas</a></li>
+              <li><a class="dropdown-item" href="lineasparalelas.html">Líneas Paralelas</a></li>
+              <li><a class="dropdown-item" href="globoterraqueo.html">Globo Terráqueo</a></li>
+              <li><a class="dropdown-item" href="caracteristicascuadrilateros.html">Características de los Cuadriláteros</a></li>
+              <li><a class="dropdown-item" href="afirmacionescuadrilateros.html">Afirmaciones de los Cuadriláteros</a></li>
+            </ul>
+          </li>
+
+          <!-- ===================================================
+               Fracciones (submenú)
+               =================================================== -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="dropFrac" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Fracciones
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="dropFrac">
+              <li><a class="dropdown-item" href="fraccionesfiguras.html">Fracciones con Figuras</a></li>
+              <li><a class="dropdown-item" href="fraccionesmaymenigual.html">Fracciones Mayor / Menor / Igual</a></li>
+            </ul>
+          </li>
+
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- =======================================================
+       CONTENIDO (SCROLL EN MAIN)
+       ======================================================= -->
+  <main>
+    <section id="apps" class="py-4 py-md-5">
+      <div class="container">
+
+        <h2 class="h3 mb-3">Módulos disponibles</h2>
+
+        <!-- ====================== Decimales ====================== -->
+        <h3 class="h5 mt-3 mb-2">Decimales</h3>
+
+        <div class="menu-grid mb-4">
+          <!-- ---------- Recta Numérica ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-info-subtle text-info">📏</div>
+                <h3 class="h5 m-0">Recta Numérica</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="rectanumerica.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="rectanumerica.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Casita de Valores ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-warning-subtle text-warning">🏠</div>
+                <h3 class="h5 m-0">Casita de Valores</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="casitavalores.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="casitavalores.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Escribe Decimal ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-primary-subtle text-primary">✍️</div>
+                <h3 class="h5 m-0">Escribe Decimal</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="escribedecimal.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="escribedecimal.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Números con Flechas ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-secondary-subtle text-secondary">➡️</div>
+                <h3 class="h5 m-0">Números con Flechas</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="numerosconflechas.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="numerosconflechas.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Decimales: Mayor / Menor / Igual ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-danger-subtle text-danger">⚖️</div>
+                <h3 class="h5 m-0">Decimales: Mayor / Menor / Igual</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="decimalesmayormenorigual.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="decimalesmayormenorigual.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Ordenar Decimales (menor→mayor / mayor→menor) ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-primary-subtle text-primary">🔀</div>
+                <h3 class="h5 m-0">Ordenar Decimales (menor→mayor / mayor→menor)</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="ordenrmayormenormayor.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="ordenrmayormenormayor.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========== NUEVO: Temperatura (tarjeta/tiquete) ========== -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-danger-subtle text-danger">🌡️</div>
+                <h3 class="h5 m-0">Temperatura</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="temperatura.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="temperatura.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+          <!-- /NUEVO Temperatura -->
+        </div><!-- /menu-grid Decimales -->
+
+        <!-- ====================== Figuras ====================== -->
+        <h3 class="h5 mt-3 mb-2">Figuras</h3>
+
+        <div class="menu-grid mb-4">
+          <!-- ---------- Figuras Planas ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-success-subtle text-success">📐</div>
+                <h3 class="h5 m-0">Figuras Planas</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="figurasplanas.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="figurasplanas.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Líneas Paralelas ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-success-subtle text-success">〰️</div>
+                <h3 class="h5 m-0">Líneas Paralelas</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="lineasparalelas.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="lineasparalelas.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Globo Terráqueo ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-info-subtle text-info">🌍</div>
+                <h3 class="h5 m-0">Globo Terráqueo</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="globoterraqueo.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="globoterraqueo.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Características de los Cuadriláteros ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-warning-subtle text-warning">🧩</div>
+                <h3 class="h5 m-0">Características de los Cuadriláteros</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="caracteristicascuadrilateros.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="caracteristicascuadrilateros.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Afirmaciones de los Cuadriláteros ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon bg-warning-subtle text-warning">✅</div>
+                <h3 class="h5 m-0">Afirmaciones de los Cuadriláteros</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="afirmacionescuadrilateros.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="afirmacionescuadrilateros.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+        </div><!-- /menu-grid Figuras -->
+
+        <!-- ====================== Fracciones ====================== -->
+        <h3 class="h5 mt-3 mb-2">Fracciones</h3>
+
+        <div class="menu-grid">
+          <!-- ---------- Fracciones con Figuras ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon" style="background:#e9d5ff;color:#0f172a;">🧮</div>
+                <h3 class="h5 m-0">Fracciones con Figuras</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="fraccionesfiguras.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="fraccionesfiguras.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- Fracciones: Mayor / Menor / Igual ---------- -->
+          <div class="card card-app">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="app-icon" style="background:#e9d5ff;color:#0f172a;">⚖️</div>
+                <h3 class="h5 m-0">Fracciones: Mayor / Menor / Igual</h3>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="fraccionesmaymenigual.html">Abrir módulo</a>
+                <button class="btn btn-outline-secondary" data-open-embed data-url="fraccionesmaymenigual.html">Vista rápida</button>
+              </div>
+            </div>
+          </div>
+        </div><!-- /menu-grid Fracciones -->
+
+      </div><!-- /container -->
+    </section>
+  </main>
+
+  <!-- =======================================================
+       FOOTER (FIJO ABAJO)
+       ======================================================= -->
+  <footer id="contacto" class="pt-3 pb-3 fixed-bottom">
+    <div class="container text-center">
+      <p class="mb-1">
+        <a href="mailto:AgregandoValorAlMundo.ARB@gmail.com">AgregandoValorAlMundo.ARB@gmail.com</a>
+      </p>
+      <p class="small m-0">Derechos reservados @ 2032</p>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Hook opcional para "Vista rápida".
+  </script>
+</body>
+</html>
