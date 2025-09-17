@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Matemáticas 4.º — Temperatura (°C ↔ °F)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --azul:#2563eb; --verde:#10b981; --rojo:#ef4444; --morado:#7c3aed;
+    --gris:#f8fafc; --borde:#e2e8f0; --texto:#0f172a;
+    --radius:18px; --shadow:0 10px 28px rgba(2,6,23,.08);
+  }
+  body{background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:var(--texto)}
+  .game-card{border:none;border-radius:1rem;box-shadow:var(--shadow)}
+  .title-badge{background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .score-chip{font-weight:800;border-radius:999px;padding:.45rem .95rem;background:#eef7ff;color:#0d47a1;border:1px solid #d7ebff}
+  .btn-fab{border-radius:999px;padding:.65rem 1rem;font-weight:700;box-shadow:0 6px 20px rgba(30,136,229,.25)}
+  .section{border:1px solid var(--borde);border-radius:16px;padding:14px;background:#fff}
+  .section h3{font-size:1.05rem;margin-bottom:.35rem}
+  .muted{color:#64748b}
+
+  /* Tabs / botones */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start}
+  .tab-btn{border:2px solid #dbeafe;background:#eff6ff;color:#0b1b44;font-weight:800;border-radius:999px;padding:.5rem 1rem}
+  .tab-btn.active{border-color:#60a5fa;background:#dbeafe}
+  .tab-pane{display:none}
+  .tab-pane.active{display:block}
+
+  /* Botón Menú pequeño y parpadeando */
+  .btn-menu{
+    display:inline-block;margin-left:auto;
+    padding:.55rem 1.1rem;font-weight:800;border:none;border-radius:999px;
+    background:#ef4444;color:#fff;box-shadow:0 6px 18px rgba(239,68,68,.32);
+    animation:blink 1.15s infinite; white-space:nowrap;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+
+  /* Tarjetas / ejercicios */
+  .task{border:1px solid var(--borde);border-radius:14px;padding:1rem;background:#fff}
+  .task h4{font-size:1rem;margin:0 0 .25rem;font-weight:800;color:#0b1b44}
+  .mark{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .ok{background:#dcfce7;color:#15803d;border:2px solid #86efac}
+  .bad{background:#fee2e2;color:#b91c1c;border:2px solid #fecaca}
+  .inp{max-width:160px}
+
+  /* Termómetros */
+  .thermo{width:120px;height:320px}
+  .t-tube{fill:#f1f5f9;stroke:#94a3b8;stroke-width:2}
+  .t-col{fill:#60a5fa}
+  .t-bulb{fill:#ef4444}
+  .scale text{font-size:10px;fill:#334155}
+  .meter{display:flex;gap:22px;align-items:flex-end;justify-content:center}
+  .kpi{display:flex;gap:8px;align-items:center;justify-content:center}
+  .kpi .pill{border-radius:999px;border:2px solid #e2e8f0;background:#fff;padding:.25rem .6rem;font-weight:900}
+  .formula{border:2px dashed #cbd5e1;border-radius:12px;padding:.75rem;background:#f8fafc;font-weight:800}
+
+  /* Pasos */
+  .steps{border-left:4px solid #93c5fd;padding-left:12px;margin-top:10px}
+  .steps .step{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.5rem .75rem;margin:.35rem 0}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,"Courier New",monospace}
+</style>
+</head>
+<body>
+<div class="container py-4 py-md-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+      <div class="card game-card">
+        <div class="card-body p-3 p-md-4 p-lg-5">
+
+          <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div>
+              <h1 class="h3 m-0 title-badge">Matemáticas 4.º — Temperatura (°C ↔ °F)</h1>
+              <p class="text-secondary m-0">Aprende a convertir entre <strong>grados Celsius</strong> y <strong>grados Fahrenheit</strong> con termómetros interactivos, calculadoras y ejercicios.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span id="score" class="score-chip" aria-live="polite">Puntaje: 0 / 100</span>
+              <button id="howBtn" class="btn btn-outline-secondary btn-fab" type="button">❓ ¿Cómo jugar?</button>
+              <button id="checkBtn" class="btn btn-success btn-fab" type="button">✔️ Revisar</button>
+              <button id="resetBtn" class="btn btn-primary btn-fab" type="button">🔄 Nueva ronda</button>
+            </div>
+          </header>
+
+          <!-- Tabs + Menú -->
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="tabs">
+              <button class="tab-btn active" data-tab="t1">Fórmulas + Termómetros</button>
+              <button class="tab-btn" data-tab="t2">Conversión °C → °F</button>
+              <button class="tab-btn" data-tab="t3">Conversión °F → °C</button>
+              <button class="tab-btn" data-tab="t4">Ejercicios</button>
+            </div>
+            <button class="btn-menu" onclick="location.href='index.html'">← Menú principal</button>
+          </div>
+
+          <!-- Pane 1: Fórmulas e intuitivo -->
+          <div id="t1" class="tab-pane active">
+            <div class="row g-3">
+              <div class="col-12 col-lg-5">
+                <div class="section h-100">
+                  <h3>Fórmulas clave</h3>
+                  <div class="formula mb-2">De °C a °F: <span class="mono">°F = (°C × 9 ÷ 5) + 32</span></div>
+                  <div class="formula mb-3">De °F a °C: <span class="mono">°C = (°F − 32) × 5 ÷ 9</span></div>
+                  <ul class="mb-2">
+                    <li><strong>0 °C</strong> congela el agua (<strong>32 °F</strong>).</li>
+                    <li><strong>100 °C</strong> hierve el agua (<strong>212 °F</strong>).</li>
+                  </ul>
+                  <p class="small text-muted">Tip: un paso en °C equivale a 1.8 pasos en °F (por eso aparece 9/5).</p>
+                  <button class="btn-menu" onclick="location.href='index.html'">← Menú principal</button>
+                </div>
+              </div>
+              <div class="col-12 col-lg-7">
+                <div class="section">
+                  <h3>Termómetros interactivos</h3>
+                  <div class="kpi mb-2">
+                    <span class="pill">°C: <span id="kC">25</span></span>
+                    <span class="pill">°F: <span id="kF">77</span></span>
+                  </div>
+                  <div class="meter mb-2">
+                    <svg id="thF" class="thermo" viewBox="0 0 120 320" aria-label="Termómetro Fahrenheit"></svg>
+                    <svg id="thC" class="thermo" viewBox="0 0 120 320" aria-label="Termómetro Celsius"></svg>
+                  </div>
+                  <label class="form-label fw-bold">Arrastra para cambiar la temperatura:</label>
+                  <input id="sliderC" type="range" class="form-range" min="-20" max="110" step="1" value="25" />
+                  <div class="small text-muted">Escala: 0–100 °C (≈32–212 °F) con margen para bajo cero / sobre ebullición.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pane 2: C a F -->
+          <div id="t2" class="tab-pane">
+            <div class="section">
+              <h3>Calculadora de °C → °F</h3>
+              <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                  <label class="form-label">Grados Celsius (°C)</label>
+                  <input id="cIn" type="number" step="0.1" class="form-control inp" value="30">
+                  <input id="cRange" type="range" class="form-range mt-2" min="-40" max="120" step="1" value="30">
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="formula">°F = (°C × 9 ÷ 5) + 32</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label">Resultado (°F)</label>
+                  <input id="fOut" type="text" class="form-control inp" readonly>
+                </div>
+              </div>
+              <div id="stepsCF" class="steps"></div>
+              <div class="small text-muted mt-2">Consejo: si una respuesta es incorrecta verás ✖ en rojo. ¡Sigue intentando! 😊</div>
+            </div>
+          </div>
+
+          <!-- Pane 3: F a C -->
+          <div id="t3" class="tab-pane">
+            <div class="section">
+              <h3>Calculadora de °F → °C</h3>
+              <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                  <label class="form-label">Grados Fahrenheit (°F)</label>
+                  <input id="fIn" type="number" step="0.1" class="form-control inp" value="86">
+                  <input id="fRange" type="range" class="form-range mt-2" min="-40" max="248" step="1" value="86">
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="formula">°C = (°F − 32) × 5 ÷ 9</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label">Resultado (°C)</label>
+                  <input id="cOut" type="text" class="form-control inp" readonly>
+                </div>
+              </div>
+              <div id="stepsFC" class="steps"></div>
+            </div>
+          </div>
+
+          <!-- Pane 4: Ejercicios -->
+          <div id="t4" class="tab-pane">
+            <div class="row g-3" id="exWrap"></div>
+          </div>
+
+          <div class="mt-3 small text-muted">Consejo: si una respuesta es incorrecta verás ✖ en rojo. ¡Sigue intentando! 😊</div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modales -->
+<div class="modal fade" id="howModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content p-3">
+    <div class="modal-header border-0"><h5 class="modal-title">¿Cómo se usa esta página?</h5>
+      <button class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body">
+      <ol class="mb-0 ps-3">
+        <li>Mueve el <strong>deslizador</strong> en “Fórmulas + Termómetros” para ver ambos termómetros.</li>
+        <li>En las calculadoras verás los <strong>pasos</strong> de cada conversión.</li>
+        <li>Resuelve los <strong>ejercicios</strong> y pulsa <em>Revisar</em>. Con 100 aparece confeti 🎉.</li>
+      </ol>
+    </div>
+  </div></div>
+</div>
+
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content text-center p-2 p-md-3">
+    <div class="modal-header border-0 justify-content-center"><div style="font-size:48px">🎉✨</div></div>
+    <div class="modal-body"><h3 id="resultTitle" class="mb-2">¡Excelente!</h3>
+      <p id="resultText" class="lead mb-0"></p></div>
+    <div class="modal-footer border-0 justify-content-center">
+      <button class="btn btn-primary" data-bs-dismiss="modal">Seguir practicando</button>
+    </div>
+  </div></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+  let score=0, celebrated=false;
+
+  function setScore(v){ score=Math.round(v); $('#score').textContent=`Puntaje: ${score} / 100`; }
+
+  /* ===== Tabs ===== */
+  $$('.tab-btn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      $$('.tab-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const id=b.dataset.tab;
+      $$('.tab-pane').forEach(p=>p.classList.toggle('active', p.id===id));
+    });
+  });
+
+  /* ===== Termómetros SVG ===== */
+  const thF = document.getElementById('thF');
+  const thC = document.getElementById('thC');
+  const sliderC = document.getElementById('sliderC');
+  const kC = document.getElementById('kC');
+  const kF = document.getElementById('kF');
+
+  function drawThermo(svg, min, max, value, label){
+    svg.innerHTML='';
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g'); svg.appendChild(g);
+    const tube = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    tube.setAttribute('x','50'); tube.setAttribute('y','20'); tube.setAttribute('width','20'); tube.setAttribute('height','250'); tube.setAttribute('rx','10');
+    tube.setAttribute('class','t-tube'); g.appendChild(tube);
+    const bulb = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    bulb.setAttribute('cx','60'); bulb.setAttribute('cy','290'); bulb.setAttribute('r','18'); bulb.setAttribute('class','t-bulb'); g.appendChild(bulb);
+    const scale = document.createElementNS('http://www.w3.org/2000/svg','g'); scale.setAttribute('class','scale'); g.appendChild(scale);
+    const steps = 10;
+    for(let i=0;i<=steps;i++){
+      const y = 270 - i*(250/steps);
+      const l = document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1','72'); l.setAttribute('x2','84'); l.setAttribute('y1',y); l.setAttribute('y2',y);
+      l.setAttribute('stroke','#64748b'); l.setAttribute('stroke-width','2'); scale.appendChild(l);
+      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      const val = Math.round(min + (max-min)*(i/steps));
+      t.setAttribute('x','88'); t.setAttribute('y',y+4); t.textContent = val; scale.appendChild(t);
+    }
+    const perc = (value-min)/(max-min);
+    const h = Math.max(0, Math.min(1, perc))*250;
+    const col = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    col.setAttribute('x','52'); col.setAttribute('y', 270 - h);
+    col.setAttribute('width','16'); col.setAttribute('height', h);
+    col.setAttribute('class','t-col'); g.appendChild(col);
+    const cap = document.createElementNS('http://www.w3.org/2000/svg','text');
+    cap.setAttribute('x','60'); cap.setAttribute('y','14'); cap.setAttribute('text-anchor','middle'); cap.setAttribute('fill','#0b1b44'); cap.setAttribute('font-weight','800');
+    cap.textContent = label; g.appendChild(cap);
+  }
+  function updateThermos(c){
+    const f = c*9/5 + 32;
+    kC.textContent = Math.round(c);
+    kF.textContent = Math.round(f);
+    drawThermo(thF, -40, 248, f, '°F');
+    drawThermo(thC, -20, 110, c, '°C');
+  }
+  sliderC.addEventListener('input', e=>updateThermos(Number(e.target.value)));
+  updateThermos(Number(sliderC.value));
+
+  /* ===== Calculadoras con PASOS ===== */
+  const cIn=$('#cIn'), cRange=$('#cRange'), fOut=$('#fOut'), stepsCF=$('#stepsCF');
+  const fIn=$('#fIn'), fRange=$('#fRange'), cOut=$('#cOut'), stepsFC=$('#stepsFC');
+
+  function renderStepsCF(c){
+    const m1 = c*9, m2 = m1/5, res = m2+32;
+    fOut.value = res.toFixed(1);
+    stepsCF.innerHTML = `
+      <div class="step mono">1) Multiplica por 9:  ${c.toFixed(1)} × 9 = <strong>${m1.toFixed(1)}</strong></div>
+      <div class="step mono">2) Divide entre 5:   ${m1.toFixed(1)} ÷ 5 = <strong>${m2.toFixed(1)}</strong></div>
+      <div class="step mono">3) Suma 32:          ${m2.toFixed(1)} + 32 = <strong>${res.toFixed(1)}</strong> °F</div>`;
+  }
+  function renderStepsFC(f){
+    const s1 = f-32, s2 = s1*5, res = s2/9;
+    cOut.value = res.toFixed(1);
+    stepsFC.innerHTML = `
+      <div class="step mono">1) Resta 32:         ${f.toFixed(1)} − 32 = <strong>${s1.toFixed(1)}</strong></div>
+      <div class="step mono">2) Multiplica por 5: ${s1.toFixed(1)} × 5 = <strong>${s2.toFixed(1)}</strong></div>
+      <div class="step mono">3) Divide entre 9:   ${s2.toFixed(1)} ÷ 9 = <strong>${res.toFixed(1)}</strong> °C</div>`;
+  }
+  function syncC(val){ cIn.value = val; cRange.value = val; renderStepsCF(Number(val)); }
+  function syncF(val){ fIn.value = val; fRange.value = val; renderStepsFC(Number(val)); }
+
+  cIn.addEventListener('input',()=>syncC(Number(cIn.value||0)));
+  cRange.addEventListener('input',()=>syncC(Number(cRange.value||0)));
+  fIn.addEventListener('input',()=>syncF(Number(fIn.value||0)));
+  fRange.addEventListener('input',()=>syncF(Number(fRange.value||0)));
+  syncC(Number(cIn.value)); syncF(Number(fIn.value));
+
+  /* ===== Ejercicios (2 tarjetas con pasos al revisar) ===== */
+  const EX = [
+    // izquierda: C -> F
+    { kind:'C→F', make: ()=>{
+        const C = rnd(0,60);
+        const F = C*9/5+32;
+        return {
+          q:`Convierte ${C} °C a °F`,
+          correct: Math.round(F),
+          steps: ()=>{
+            const m1=C*9, m2=m1/5, res=m2+32;
+            return [
+              `1) ${C} × 9 = ${m1.toFixed(1)}`,
+              `2) ${m1.toFixed(1)} ÷ 5 = ${m2.toFixed(1)}`,
+              `3) ${m2.toFixed(1)} + 32 = ${res.toFixed(1)} °F`
+            ];
+          }
+        };
+    }},
+    // derecha: F -> C
+    { kind:'F→C', make: ()=>{
+        const F = rnd(40,200);
+        const C = (F-32)*5/9;
+        return {
+          q:`Convierte ${F} °F a °C`,
+          correct: Math.round(C),
+          steps: ()=>{
+            const s1=F-32, s2=s1*5, res=s2/9;
+            return [
+              `1) ${F} − 32 = ${s1.toFixed(1)}`,
+              `2) ${s1.toFixed(1)} × 5 = ${s2.toFixed(1)}`,
+              `3) ${s2.toFixed(1)} ÷ 9 = ${res.toFixed(1)} °C`
+            ];
+          }
+        };
+    }},
+  ];
+  function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+  let items=[]; // ejercicios activos
+  function renderExercises(){
+    items = EX.map(x=>x.make());
+    const wrap = $('#exWrap'); wrap.innerHTML='';
+    items.forEach((e,i)=>{
+      wrap.insertAdjacentHTML('beforeend',`
+        <div class="col-12 col-md-6">
+          <div class="task h-100">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <h4 class="mb-0">${e.q}</h4>
+              <span class="mark" id="m${i}" style="visibility:hidden">✓</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <input id="a${i}" class="form-control inp" placeholder="Respuesta numérica">
+              <span class="mono">${items[i].kind==='C→F'?'°F':'°C'}</span>
+            </div>
+            <div class="steps small" id="s${i}"></div>
+          </div>
+        </div>
+      `);
+    });
+  }
+  renderExercises();
+
+  function computeScore(){
+    let ok=0;
+    items.forEach((e,i)=>{
+      const val = Number(($('#a'+i).value||'').toString().replace(',','.'));
+      const correct = Math.round(e.correct);
+      const good = (Math.round(val)===correct);
+      const mk = $('#m'+i); mk.style.visibility='visible'; mk.textContent=good?'✓':'✖'; mk.className='mark '+(good?'ok':'bad');
+      if(good) ok++;
+      // pasos debajo
+      const s = $('#s'+i); const list = e.steps();
+      s.innerHTML = list.map(t=>`<div class="step mono">${t}</div>`).join('') + `<div class="step mono"><strong>Resultado redondeado: ${correct} ${items[i].kind==='C→F'?'°F':'°C'}</strong></div>`;
+    });
+    const v=(ok/items.length)*100; setScore(v);
+    const t=$('#resultTitle'), txt=$('#resultText');
+    if(v===100){ t.textContent='¡Has ganado!'; txt.textContent='¡Sacaste un 100! 😊'; if(!celebrated){ confetti(); celebrated=true; } }
+    else if(v>=70){ t.textContent='¡Muy bien!'; txt.textContent=`Tu puntaje fue ${v.toFixed(0)} / 100. Revisa en rojo y vuelve a intentar.`; }
+    else { t.textContent='¡Tú puedes!'; txt.textContent=`Tu puntaje fue ${v.toFixed(0)} / 100. Practica un poco más.`; }
+    if(window.bootstrap){ new bootstrap.Modal('#resultModal').show(); }
+  }
+
+  function resetAll(){
+    celebrated=false; setScore(0);
+    // limpiar pasos de calculadoras y valores por defecto
+    syncC(30); syncF(86);
+    sliderC.value=25; updateThermos(25);
+    // ejercicios nuevos
+    renderExercises();
+  }
+
+  function confetti(){
+    const burst=document.createElement('div'); burst.style.position='fixed'; burst.style.inset='0';
+    burst.style.pointerEvents='none'; burst.style.zIndex='2000'; document.body.appendChild(burst);
+    const emojis=['✨','🎉','⭐','🎯','💫','🏆'];
+    for(let i=0;i<80;i++){
+      const s=document.createElement('div'); s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.position='absolute'; s.style.left=Math.random()*100+'%'; s.style.top='-10%';
+      s.style.fontSize=(16+Math.random()*24)+'px'; s.style.transition='transform 1.6s ease, opacity 1.6s ease';
+      burst.appendChild(s);
+      requestAnimationFrame(()=>{ s.style.transform='translateY('+(120+Math.random()*140)+'vh) rotate('+(Math.random()*360)+'deg)'; s.style.opacity='0'; });
+    }
+    setTimeout(()=>burst.remove(),1700);
+  }
+
+  /* Botones superiores */
+  $('#checkBtn').addEventListener('click', computeScore);
+  $('#resetBtn').addEventListener('click', resetAll);
+  $('#howBtn').addEventListener('click', ()=>{ if(window.bootstrap){ new bootstrap.Modal('#howModal').show(); } });
+
+  // arranque
+  setScore(0);
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
